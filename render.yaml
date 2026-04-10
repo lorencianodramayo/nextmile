@@ -1,0 +1,19 @@
+# Render Blueprint - Deploy both frontend + backend as one service
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: nextmile
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: .
+    buildCommand: cd server && npm install && cd ../client && npm install && npm run build
+    startCommand: cd server && npx tsx src/index.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: MONGODB_URI
+        sync: false  # Set manually in Render dashboard

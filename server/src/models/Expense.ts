@@ -1,0 +1,49 @@
+import mongoose, { Schema, Document, Types } from 'mongoose';
+
+export interface IExpense extends Document {
+  truck: Types.ObjectId;
+  date: Date;
+  category: string;
+  amount: number;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const ExpenseSchema = new Schema<IExpense>(
+  {
+    truck: {
+      type: Schema.Types.ObjectId,
+      ref: 'Truck',
+      required: true,
+      index: true,
+    },
+    date: {
+      type: Date,
+      required: true,
+      index: true,
+    },
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    description: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+ExpenseSchema.index({ truck: 1, date: 1 });
+
+export const Expense = mongoose.model<IExpense>('Expense', ExpenseSchema);

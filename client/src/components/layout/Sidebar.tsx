@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  X,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -27,8 +28,13 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
+        // Base styles
         'fixed top-0 left-0 h-screen z-50 flex flex-col gap-4 p-4 glass border-r border-slate-200/80 dark:border-slate-700/90 shadow-[8px_0_24px_rgba(15,23,42,0.04)] dark:shadow-[8px_0_24px_rgba(0,0,0,0.18)] transition-all duration-300 ease-in-out',
-        sidebarCollapsed ? 'w-[84px] px-3' : 'w-[260px]'
+        // Desktop: normal sidebar behavior
+        'hidden lg:flex',
+        sidebarCollapsed ? 'lg:w-[84px] lg:px-3' : 'lg:w-[260px]',
+        // Mobile: full-width slide-out drawer (controlled by collapsed state)
+        !sidebarCollapsed && '!flex w-[280px]'
       )}
     >
       {/* Header */}
@@ -48,12 +54,21 @@ export default function Sidebar() {
             </div>
           </div>
         )}
+        {/* Desktop collapse button */}
         <button
           onClick={toggleSidebar}
-          className="w-[38px] h-[38px] rounded-xl grid place-items-center bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-700 flex-shrink-0 transition-colors shadow-sm"
+          className="hidden lg:grid w-[38px] h-[38px] rounded-xl place-items-center bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-700 flex-shrink-0 transition-colors shadow-sm"
           aria-label="Toggle sidebar"
         >
           {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        </button>
+        {/* Mobile close button */}
+        <button
+          onClick={toggleSidebar}
+          className="lg:hidden w-[38px] h-[38px] rounded-xl grid place-items-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 flex-shrink-0 transition-colors"
+          aria-label="Close sidebar"
+        >
+          <X size={20} />
         </button>
       </div>
 
@@ -64,10 +79,14 @@ export default function Sidebar() {
             key={to}
             to={to}
             end={to === '/'}
+            onClick={() => {
+              // Auto-close sidebar on mobile when nav link clicked
+              if (window.innerWidth < 1024) toggleSidebar();
+            }}
             className={({ isActive }) =>
               cn(
                 'relative flex items-center gap-3 px-3.5 py-3 rounded-[14px] font-semibold text-[0.92rem] transition-all duration-200 group',
-                sidebarCollapsed && 'justify-center px-0',
+                sidebarCollapsed && 'lg:justify-center lg:px-0',
                 isActive
                   ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-[0_10px_24px_rgba(37,99,235,0.28)]'
                   : 'text-slate-500 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-700 dark:hover:text-white'
@@ -75,9 +94,9 @@ export default function Sidebar() {
             }
           >
             <Icon size={22} strokeWidth={2} className="flex-shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:scale-105" />
-            {!sidebarCollapsed && <span className="whitespace-nowrap">{label}</span>}
+            {(!sidebarCollapsed || window.innerWidth < 1024) && <span className="whitespace-nowrap">{label}</span>}
             {sidebarCollapsed && (
-              <span className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 bg-slate-900 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+              <span className="hidden lg:block absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 bg-slate-900 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
                 {label}
                 <span className="absolute left-[-4px] top-1/2 -translate-y-1/2 rotate-45 w-2 h-2 bg-slate-900" />
               </span>
@@ -92,16 +111,16 @@ export default function Sidebar() {
           onClick={toggleTheme}
           className={cn(
             'w-full min-h-[46px] border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 rounded-[18px] px-4 py-3 shadow-sm flex items-center gap-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors mb-3',
-            sidebarCollapsed && 'justify-center px-3'
+            sidebarCollapsed && 'lg:justify-center lg:px-3'
           )}
         >
           {theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
-          {!sidebarCollapsed && (
+          {(!sidebarCollapsed || window.innerWidth < 1024) && (
             <span className="text-sm">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
           )}
         </button>
 
-        {!sidebarCollapsed && (
+        {(!sidebarCollapsed || window.innerWidth < 1024) && (
           <>
             <div className="text-[1.1rem] font-bold text-slate-900 dark:text-slate-100 leading-tight">
               ROBIN SANTOS

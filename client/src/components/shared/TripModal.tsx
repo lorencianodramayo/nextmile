@@ -174,7 +174,6 @@ export default function TripModal({ open, onClose, editRow }: TripModalProps) {
       const updated = { ...f, rate: val };
       if (f.status === 'Working Day' && val) {
         if (!f.trips || f.trips === '0') updated.trips = '1';
-        if (!f.crewSalary || f.crewSalary === '0') updated.crewSalary = '1900';
       }
       return updated;
     });
@@ -264,9 +263,10 @@ export default function TripModal({ open, onClose, editRow }: TripModalProps) {
             options={STATUS_OPTIONS}
             value={STATUS_OPTIONS.find((o) => o.value === form.status)}
             onChange={(opt) => { if (opt) setForm({ ...form, status: opt.value }); }}
-            styles={styles}
+            styles={{...styles, menuPortal: (base: Record<string, unknown>) => ({...base, zIndex: 9999})}}
             isSearchable={false}
-            menuPortalTarget={document.body} styles={{...styles, menuPortal: (base: Record<string, unknown>) => ({...base, zIndex: 9999})}} classNamePrefix="nm-select"
+            menuPortalTarget={document.body}
+            classNamePrefix="nm-select"
           />
         </div>
         <div>
@@ -283,7 +283,7 @@ export default function TripModal({ open, onClose, editRow }: TripModalProps) {
         </div>
         <div>
           <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">Crew Salary (₱)</label>
-          <input type="number" value={form.crewSalary} onChange={(e) => setForm({ ...form, crewSalary: e.target.value })} placeholder="1900" className={inputClass} />
+          <input type="number" value={form.crewSalary} onChange={(e) => setForm({ ...form, crewSalary: e.target.value })} placeholder="0" className={inputClass} />
         </div>
         <div>
           <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">Cash Advance (₱)</label>

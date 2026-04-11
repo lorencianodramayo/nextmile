@@ -42,7 +42,7 @@ export function crewSalaryDefault(
   crewSalary: number | undefined
 ): number {
   if (isWorkingStatus(status) && rate && rate > 0 && (!crewSalary || crewSalary === 0)) {
-    return 1900;
+    return 0;
   }
   return crewSalary || 0;
 }

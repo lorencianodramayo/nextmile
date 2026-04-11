@@ -47,11 +47,10 @@ export default function AppLayout() {
       <main
         className={cn(
           'relative min-h-screen transition-all duration-300 ease-in-out p-4 lg:p-5',
-          // Desktop: offset by sidebar width
-          'lg:ml-[260px]',
-          sidebarCollapsed && 'lg:ml-[56px]',
           // Mobile: no offset, add top padding for mobile header
-          'ml-0 pt-[72px] lg:pt-5'
+          'ml-0 pt-[72px] lg:pt-5',
+          // Desktop: offset by sidebar width (ternary to avoid class conflict)
+          sidebarCollapsed ? 'lg:ml-[56px]' : 'lg:ml-[260px]'
         )}
       >
         <div className="max-w-[1600px] mx-auto">

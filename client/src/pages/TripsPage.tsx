@@ -21,7 +21,6 @@ export default function TripsPage() {
     selectedTripIds, setSelectedTripIds, bulkTogglePaid, bulkDeleteTrips, quickEditTrip,
   } = useAppStore();
   const { isAdmin } = useAuthStore();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const admin = isAdmin();
 
   const [tripModal, setTripModal] = useState(false);

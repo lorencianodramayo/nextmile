@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import api from '../api/client';
 import { useAppStore } from '../store/useAppStore';
@@ -41,7 +41,7 @@ export default function PaymentsPage() {
 
   useEffect(() => { initApp(); }, [initApp]);
 
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     try {
       const params: Record<string, string> = {};
       if (selectedTruck) params.truck = selectedTruck;
@@ -50,9 +50,9 @@ export default function PaymentsPage() {
     } catch {
       // Endpoint may not exist yet
     }
-  };
+  }, [selectedTruck]);
 
-  useEffect(() => { fetchPayments(); }, [selectedTruck]);
+  useEffect(() => { fetchPayments(); }, [fetchPayments]);
 
   const handleUpload = async () => {
     if (!file) {

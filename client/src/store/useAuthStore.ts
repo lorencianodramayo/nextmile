@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../api/client';
+import { useAppStore } from './useAppStore';
 
 export interface AuthUser {
   _id: string;
@@ -68,6 +69,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.removeItem('nm_token');
     localStorage.removeItem('nm_user');
     set({ user: null, token: null, initialized: true });
+    // Reset app store so it re-fetches on next login
+    useAppStore.setState({
+      initialized: false,
+      tripRows: [],
+      expenseRows: [],
+      reportRows: [],
+      chartData: [],
+      kpis: { gross: 0, net: 0, trips: 0, payable: 0, cashOutflow: 0, expenses: 0 },
+      previousKpis: { gross: 0, net: 0, trips: 0, payable: 0, cashOutflow: 0, expenses: 0 },
+      selectedTruck: '',
+      selectedTripIds: [],
+    });
   },
 
   checkAuth: async () => {

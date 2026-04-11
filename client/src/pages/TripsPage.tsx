@@ -183,11 +183,12 @@ export default function TripsPage() {
             transition={{ duration: 0.25, ease: 'easeOut' }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-lg"
           >
-            <div className="glass-card rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-[0_8px_32px_rgba(37,99,235,0.18)] dark:shadow-[0_8px_32px_rgba(37,99,235,0.25)] px-4 py-3 flex flex-wrap items-center justify-center gap-2">
+            <div className="glass-card rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-[0_8px_32px_rgba(37,99,235,0.18)] dark:shadow-[0_8px_32px_rgba(37,99,235,0.25)] px-4 py-3 flex flex-col sm:flex-row items-center justify-center gap-2">
               <span className="text-sm font-semibold whitespace-nowrap">
                 {selectedTripIds.length} trip{selectedTripIds.length !== 1 ? 's' : ''} selected
               </span>
               <div className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700" />
+              <div className="flex items-center gap-2">
               <button
                 onClick={() => bulkTogglePaid(selectedTripIds, true)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors"
@@ -212,6 +213,7 @@ export default function TripsPage() {
               >
                 Clear
               </button>
+              </div>
             </div>
           </motion.div>
         )}

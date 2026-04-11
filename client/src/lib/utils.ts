@@ -11,6 +11,16 @@ export function peso(n: number | undefined | null): string {
   }).format(Number(n || 0));
 }
 
+/** Full number with commas, no decimal cents — ideal for KPI cards */
+export function pesoCompact(n: number | undefined | null): string {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(Number(n || 0)));
+}
+
 export function formatDateText(date: string | Date): string {
   const d = new Date(date);
   return d.toLocaleDateString('en-US', {
@@ -38,15 +48,4 @@ export function dayNameShort(n: number): string {
 
 export function dayNameLong(n: number): string {
   return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][n] || '';
-}
-
-export function pesoCompact(n: number | undefined | null): string {
-  const num = Number(n || 0);
-  const abs = Math.abs(num);
-  const sign = num < 0 ? '-' : '';
-
-  if (abs >= 1_000_000_000) return sign + '₱' + (abs / 1_000_000_000).toFixed(1) + 'B';
-  if (abs >= 1_000_000) return sign + '₱' + (abs / 1_000_000).toFixed(1) + 'M';
-  if (abs >= 10_000) return sign + '₱' + (abs / 1_000).toFixed(1) + 'K';
-  return peso(num);
 }

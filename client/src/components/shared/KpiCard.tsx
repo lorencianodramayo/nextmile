@@ -41,7 +41,7 @@ export default function KpiCard({
           <div className="text-[0.65rem] sm:text-[0.72rem] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-1 sm:mb-2 leading-none truncate">
             {label}
           </div>
-          <div className="text-xl sm:text-[1.7rem] font-bold leading-none tracking-tight truncate">
+          <div className="text-lg sm:text-[1.7rem] font-bold leading-none tracking-tight truncate">
             {value}
           </div>
         </div>

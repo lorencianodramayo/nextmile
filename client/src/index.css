@@ -26,11 +26,52 @@
 
   html {
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   body {
     @apply font-sans antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
+
+  * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+}
+
+/* Shimmer animation for skeleton loaders */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0) 0%,
+    rgba(226, 232, 240, 0.2) 20%,
+    rgba(226, 232, 240, 0.5) 60%,
+    rgba(226, 232, 240, 0)
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(51, 65, 85, 0) 0%,
+    rgba(51, 65, 85, 0.2) 20%,
+    rgba(51, 65, 85, 0.5) 60%,
+    rgba(51, 65, 85, 0)
+  );
+  background-size: 1000px 100%;
 }
 
 /* Scrollbar styling */

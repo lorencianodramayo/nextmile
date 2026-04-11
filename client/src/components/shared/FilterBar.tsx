@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import type { RangePreset } from '../../lib/dateHelpers';
 import Select from 'react-select';
 import DatePicker from 'react-datepicker';
+import { getSelectStyles } from '../../lib/selectStyles';
 import 'react-datepicker/dist/react-datepicker.css';
 
 interface FilterBarProps {
@@ -44,120 +45,6 @@ const MONTHS = [
   { value: '12', label: 'December' },
 ];
 
-// Custom react-select styles for light mode
-const selectStyles = {
-  control: (base: Record<string, unknown>, state: { isFocused: boolean }) => ({
-    ...base,
-    minHeight: '44px',
-    borderRadius: '14px',
-    borderColor: state.isFocused ? '#60a5fa' : '#e2e8f0',
-    backgroundColor: 'white',
-    boxShadow: state.isFocused ? '0 0 0 3px rgba(37,99,235,0.1)' : 'none',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    '&:hover': { borderColor: '#93c5fd' },
-    cursor: 'pointer',
-  }),
-  menu: (base: Record<string, unknown>) => ({
-    ...base,
-    borderRadius: '14px',
-    overflow: 'hidden',
-    boxShadow: '0 12px 40px rgba(15,23,42,0.12)',
-    border: '1px solid #e2e8f0',
-    zIndex: 50,
-  }),
-  menuList: (base: Record<string, unknown>) => ({
-    ...base,
-    padding: '4px',
-  }),
-  option: (base: Record<string, unknown>, state: { isSelected: boolean; isFocused: boolean }) => ({
-    ...base,
-    borderRadius: '10px',
-    padding: '10px 12px',
-    fontSize: '0.875rem',
-    fontWeight: state.isSelected ? 600 : 400,
-    backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#eff6ff' : 'transparent',
-    color: state.isSelected ? 'white' : '#334155',
-    cursor: 'pointer',
-    '&:active': { backgroundColor: state.isSelected ? '#2563eb' : '#dbeafe' },
-  }),
-  singleValue: (base: Record<string, unknown>) => ({
-    ...base,
-    color: '#0f172a',
-    fontWeight: 500,
-  }),
-  indicatorSeparator: () => ({ display: 'none' }),
-  dropdownIndicator: (base: Record<string, unknown>) => ({
-    ...base,
-    color: '#94a3b8',
-    '&:hover': { color: '#64748b' },
-  }),
-  placeholder: (base: Record<string, unknown>) => ({
-    ...base,
-    color: '#94a3b8',
-  }),
-};
-
-// Custom react-select styles for dark mode
-const selectStylesDark = {
-  ...selectStyles,
-  control: (base: Record<string, unknown>, state: { isFocused: boolean }) => ({
-    ...base,
-    minHeight: '44px',
-    borderRadius: '14px',
-    borderColor: state.isFocused ? '#3b82f6' : '#334155',
-    backgroundColor: '#0f172a',
-    boxShadow: state.isFocused ? '0 0 0 3px rgba(59,130,246,0.15)' : 'none',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    '&:hover': { borderColor: '#3b82f6' },
-    cursor: 'pointer',
-  }),
-  menu: (base: Record<string, unknown>) => ({
-    ...base,
-    borderRadius: '14px',
-    overflow: 'hidden',
-    boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
-    border: '1px solid #334155',
-    backgroundColor: '#0f172a',
-    zIndex: 50,
-  }),
-  menuList: (base: Record<string, unknown>) => ({
-    ...base,
-    padding: '4px',
-  }),
-  option: (base: Record<string, unknown>, state: { isSelected: boolean; isFocused: boolean }) => ({
-    ...base,
-    borderRadius: '10px',
-    padding: '10px 12px',
-    fontSize: '0.875rem',
-    fontWeight: state.isSelected ? 600 : 400,
-    backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#1e293b' : 'transparent',
-    color: state.isSelected ? 'white' : '#e2e8f0',
-    cursor: 'pointer',
-    '&:active': { backgroundColor: state.isSelected ? '#2563eb' : '#1e293b' },
-  }),
-  singleValue: (base: Record<string, unknown>) => ({
-    ...base,
-    color: '#e2e8f0',
-    fontWeight: 500,
-  }),
-  indicatorSeparator: () => ({ display: 'none' }),
-  dropdownIndicator: (base: Record<string, unknown>) => ({
-    ...base,
-    color: '#64748b',
-    '&:hover': { color: '#94a3b8' },
-  }),
-  placeholder: (base: Record<string, unknown>) => ({
-    ...base,
-    color: '#64748b',
-  }),
-  input: (base: Record<string, unknown>) => ({
-    ...base,
-    color: '#e2e8f0',
-  }),
-};
-
 export default function FilterBar({
   showTruck = true,
   showRange = true,
@@ -182,7 +69,7 @@ export default function FilterBar({
   } = useAppStore();
 
   const isDark = theme === 'dark';
-  const styles = isDark ? selectStylesDark : selectStyles;
+  const styles = getSelectStyles(isDark);
 
   const truckSelectOptions = [
     { value: '', label: 'All Trucks' },
@@ -242,9 +129,10 @@ export default function FilterBar({
               options={RANGE_OPTIONS}
               value={RANGE_OPTIONS.find((o) => o.value === rangePreset)}
               onChange={handleRangeChange}
-              styles={styles}
+              styles={{...styles, menuPortal: (base: Record<string, unknown>) => ({...base, zIndex: 9999})}}
               isSearchable={false}
-              menuPortalTarget={document.body} styles={{...styles, menuPortal: (base: Record<string, unknown>) => ({...base, zIndex: 9999})}} classNamePrefix="nm-select"
+              menuPortalTarget={document.body}
+              classNamePrefix="nm-select"
             />
           </div>
         )}
@@ -258,9 +146,10 @@ export default function FilterBar({
               options={truckSelectOptions}
               value={truckSelectOptions.find((o) => o.value === selectedTruck)}
               onChange={handleTruckChange}
-              styles={styles}
+              styles={{...styles, menuPortal: (base: Record<string, unknown>) => ({...base, zIndex: 9999})}}
               isSearchable
-              menuPortalTarget={document.body} styles={{...styles, menuPortal: (base: Record<string, unknown>) => ({...base, zIndex: 9999})}} classNamePrefix="nm-select"
+              menuPortalTarget={document.body}
+              classNamePrefix="nm-select"
               placeholder="Select truck..."
             />
           </div>
@@ -297,9 +186,10 @@ export default function FilterBar({
               options={MONTHS}
               value={MONTHS.find((m) => m.value === (monthValue || 'ALL'))}
               onChange={handleMonthChange}
-              styles={styles}
+              styles={{...styles, menuPortal: (base: Record<string, unknown>) => ({...base, zIndex: 9999})}}
               isSearchable={false}
-              menuPortalTarget={document.body} styles={{...styles, menuPortal: (base: Record<string, unknown>) => ({...base, zIndex: 9999})}} classNamePrefix="nm-select"
+              menuPortalTarget={document.body}
+              classNamePrefix="nm-select"
             />
           </div>
         )}

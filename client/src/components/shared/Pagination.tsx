@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-r
 import { cn } from '../../lib/utils';
 import Select from 'react-select';
 import { useAppStore } from '../../store/useAppStore';
+import { getMiniSelectStyles } from '../../lib/selectStyles';
 
 interface PaginationProps {
   currentPage: number;
@@ -19,91 +20,6 @@ const PAGE_SIZE_OPTIONS = [
   { value: 100, label: '100 / page' },
 ];
 
-const miniSelectStyles = {
-  control: (base: Record<string, unknown>, state: { isFocused: boolean }) => ({
-    ...base,
-    minHeight: '36px',
-    height: '36px',
-    borderRadius: '12px',
-    borderColor: state.isFocused ? '#60a5fa' : '#e2e8f0',
-    backgroundColor: 'white',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(37,99,235,0.1)' : 'none',
-    fontSize: '0.8rem',
-    fontWeight: 500,
-    '&:hover': { borderColor: '#93c5fd' },
-    cursor: 'pointer',
-  }),
-  menu: (base: Record<string, unknown>) => ({
-    ...base,
-    borderRadius: '12px',
-    overflow: 'hidden',
-    boxShadow: '0 8px 24px rgba(15,23,42,0.1)',
-    border: '1px solid #e2e8f0',
-    zIndex: 50,
-    minWidth: '120px',
-  }),
-  menuList: (base: Record<string, unknown>) => ({
-    ...base,
-    padding: '3px',
-  }),
-  option: (base: Record<string, unknown>, state: { isSelected: boolean; isFocused: boolean }) => ({
-    ...base,
-    borderRadius: '8px',
-    padding: '8px 10px',
-    fontSize: '0.8rem',
-    fontWeight: state.isSelected ? 600 : 400,
-    backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#eff6ff' : 'transparent',
-    color: state.isSelected ? 'white' : '#334155',
-    cursor: 'pointer',
-  }),
-  singleValue: (base: Record<string, unknown>) => ({ ...base, color: '#334155', fontWeight: 500, fontSize: '0.8rem' }),
-  indicatorSeparator: () => ({ display: 'none' }),
-  dropdownIndicator: (base: Record<string, unknown>) => ({ ...base, color: '#94a3b8', padding: '0 6px', '&:hover': { color: '#64748b' } }),
-  valueContainer: (base: Record<string, unknown>) => ({ ...base, padding: '0 8px' }),
-};
-
-const miniSelectStylesDark = {
-  ...miniSelectStyles,
-  control: (base: Record<string, unknown>, state: { isFocused: boolean }) => ({
-    ...base,
-    minHeight: '36px',
-    height: '36px',
-    borderRadius: '12px',
-    borderColor: state.isFocused ? '#3b82f6' : '#334155',
-    backgroundColor: '#0f172a',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(59,130,246,0.15)' : 'none',
-    fontSize: '0.8rem',
-    fontWeight: 500,
-    '&:hover': { borderColor: '#3b82f6' },
-    cursor: 'pointer',
-  }),
-  menu: (base: Record<string, unknown>) => ({
-    ...base,
-    borderRadius: '12px',
-    overflow: 'hidden',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-    border: '1px solid #334155',
-    backgroundColor: '#0f172a',
-    zIndex: 50,
-    minWidth: '120px',
-  }),
-  menuList: (base: Record<string, unknown>) => ({ ...base, padding: '3px' }),
-  option: (base: Record<string, unknown>, state: { isSelected: boolean; isFocused: boolean }) => ({
-    ...base,
-    borderRadius: '8px',
-    padding: '8px 10px',
-    fontSize: '0.8rem',
-    fontWeight: state.isSelected ? 600 : 400,
-    backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#1e293b' : 'transparent',
-    color: state.isSelected ? 'white' : '#e2e8f0',
-    cursor: 'pointer',
-  }),
-  singleValue: (base: Record<string, unknown>) => ({ ...base, color: '#e2e8f0', fontWeight: 500, fontSize: '0.8rem' }),
-  indicatorSeparator: () => ({ display: 'none' }),
-  dropdownIndicator: (base: Record<string, unknown>) => ({ ...base, color: '#64748b', padding: '0 6px' }),
-  valueContainer: (base: Record<string, unknown>) => ({ ...base, padding: '0 8px' }),
-};
-
 export default function Pagination({
   currentPage,
   totalPages,
@@ -114,6 +30,7 @@ export default function Pagination({
 }: PaginationProps) {
   const { theme } = useAppStore();
   const isDark = theme === 'dark';
+  const miniStyles = getMiniSelectStyles(isDark);
 
   if (totalItems === 0) return null;
 
@@ -154,7 +71,7 @@ export default function Pagination({
               options={PAGE_SIZE_OPTIONS}
               value={PAGE_SIZE_OPTIONS.find((o) => o.value === pageSize)}
               onChange={(opt) => { if (opt) onPageSizeChange(opt.value); }}
-              styles={{...(isDark ? miniSelectStylesDark : miniSelectStyles), menuPortal: (base: Record<string, unknown>) => ({...base, zIndex: 9999})}}
+              styles={{...miniStyles, menuPortal: (base: Record<string, unknown>) => ({...base, zIndex: 9999})}}
               isSearchable={false}
               menuPortalTarget={document.body}
               classNamePrefix="nm-select"

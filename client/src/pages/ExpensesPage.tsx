@@ -134,7 +134,7 @@ export default function ExpensesPage() {
               </tbody>
             </table>
           </div>
-          <div class="px-3.5 pb-3">
+          <div className="px-3.5 pb-3">
             <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} pageSize={pageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
           </div>
         </div>

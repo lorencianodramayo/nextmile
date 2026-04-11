@@ -5,7 +5,7 @@ services:
     region: singapore
     plan: free
     rootDir: .
-    buildCommand: cd server && npm install && cd ../client && npm install --production=false && npx vite build
+    buildCommand: cd server && npm ci && cd ../client && npm ci && npx vite build
     startCommand: cd server && npx tsx src/index.ts
     envVars:
       - key: NODE_ENV

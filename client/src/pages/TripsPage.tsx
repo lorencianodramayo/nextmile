@@ -20,7 +20,7 @@ export default function TripsPage() {
     searchQuery, setSearchQuery, startDate, endDate, rangePreset,
     selectedTripIds, setSelectedTripIds, bulkTogglePaid, bulkDeleteTrips, quickEditTrip,
   } = useAppStore();
-  const { isAdmin, user } = useAuthStore();
+  const { isAdmin } = useAuthStore();
   const admin = isAdmin();
 
   const [tripModal, setTripModal] = useState(false);
@@ -169,21 +169,13 @@ export default function TripsPage() {
         <TripTable
           rows={paginatedRows}
           loading={loading}
-          showActions
+          showActions={admin}
           selectable={admin}
           selectedIds={admin ? selectedTripIds : []}
           onSelectionChange={admin ? setSelectedTripIds : undefined}
           onTogglePaid={admin ? (id) => toggleTripPaid(id) : undefined}
-          onEdit={(r) => {
-            // Admin can edit any, employee can edit own unpaid
-            if (!admin && (r.paid || r.createdBy !== user?._id)) return;
-            setEditRow(r); setDuplicateFrom(null); setTripModal(true);
-          }}
-          onDelete={(r) => {
-            // Admin can delete any, employee can delete own unpaid
-            if (!admin && (r.paid || r.createdBy !== user?._id)) return;
-            setDeleteModal(r);
-          }}
+          onEdit={admin ? (r) => { setEditRow(r); setDuplicateFrom(null); setTripModal(true); } : undefined}
+          onDelete={admin ? (r) => setDeleteModal(r) : undefined}
           onDuplicate={admin ? handleDuplicate : undefined}
           onExpenseClick={admin ? (data) => setExpenseBreakdown(data) : undefined}
           selectedTruck={selectedTruck}

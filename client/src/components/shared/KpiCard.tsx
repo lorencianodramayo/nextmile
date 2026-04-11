@@ -35,7 +35,7 @@ export default function KpiCard({
   const badDirection = invertTrend ? isPositive : isNegative;
 
   return (
-    <div className="relative p-3 sm:p-[18px] min-h-[100px] sm:min-h-[122px] rounded-[18px] sm:rounded-[22px] bg-gradient-to-b from-white to-slate-50/95 dark:from-slate-900 dark:to-slate-800/90 border border-slate-200/90 dark:border-slate-700/90 shadow-sm hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col justify-between gap-1.5 sm:gap-2.5 kpi-glow">
+    <div className="relative p-3 sm:p-[18px] min-h-[100px] sm:min-h-[122px] rounded-[18px] sm:rounded-[22px] bg-gradient-to-b from-white to-slate-50/95 dark:from-slate-900 dark:to-slate-800/90 border border-slate-200/90 dark:border-slate-700/90 shadow-sm hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 flex flex-col justify-between gap-1.5 sm:gap-2.5 kpi-glow">
       <div className="flex items-start justify-between gap-2 sm:gap-3">
         <div className="min-w-0 flex-1">
           <div className="text-[0.65rem] sm:text-[0.72rem] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-1 sm:mb-2 leading-none truncate">

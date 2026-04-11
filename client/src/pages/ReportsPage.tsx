@@ -70,7 +70,7 @@ export default function ReportsPage() {
               {reportRows.length === 0 ? (
                 <tr><td colSpan={14} className="text-center py-12 text-slate-400">No rows found</td></tr>
               ) : paginatedReports.map((r) => (
-                <tr key={r._id} className={cn('hover:bg-blue-50/50 dark:hover:bg-slate-800/50', r.status === 'Holiday' && 'bg-amber-50/50', r.status === 'Day Off' && 'bg-slate-50/80 text-slate-400')}>
+                <tr key={r._id} className={cn('hover:bg-blue-50/50 dark:hover:bg-slate-800/50', r.status === 'Holiday' && 'bg-amber-50/50', r.status === 'Day Off' && 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400')}>
                   <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{r.week}</td>
                   <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">{r.dateText}</td>
                   <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">

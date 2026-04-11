@@ -39,6 +39,7 @@ const formSelectStyles = {
   singleValue: (base: Record<string, unknown>) => ({ ...base, color: '#0f172a', fontWeight: 500 }),
   indicatorSeparator: () => ({ display: 'none' }),
   dropdownIndicator: (base: Record<string, unknown>) => ({ ...base, color: '#94a3b8' }),
+  menuPortal: (base: Record<string, unknown>) => ({ ...base, zIndex: 99999 }),
 };
 
 export default function TrucksPage() {

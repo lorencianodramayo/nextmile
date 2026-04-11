@@ -125,7 +125,7 @@ export default function DashboardPage() {
       )}
 
       {/* Header */}
-      <div className="glass-card rounded-[28px] border border-slate-200/80 dark:border-slate-700/90 shadow-lg p-5 mb-3.5">
+      <div className="glass-card rounded-[22px] sm:rounded-[28px] border border-slate-200/80 dark:border-slate-700/90 shadow-lg p-3.5 sm:p-5 mb-3">
         <div className="flex flex-col md:flex-row justify-between md:items-end gap-3">
           <div>
             <h1 className="text-[1.45rem] font-bold tracking-tight leading-tight">{pageTitle}</h1>
@@ -153,7 +153,7 @@ export default function DashboardPage() {
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-3">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-5 gap-2.5 sm:gap-3 mb-3">
         <KpiCard label={`${kpiPrefix} Gross`} value={pesoCompact(kpis.gross)} currentValue={kpis.gross} previousValue={previousKpis.gross} subtitle="Total gross income" icon={<DollarSign size={22} />} colorClass="bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400" />
         <KpiCard label={`${kpiPrefix} Net`} value={pesoCompact(kpis.net)} currentValue={kpis.net} previousValue={previousKpis.net} subtitle="After salary and expenses" icon={<CheckCircle2 size={22} />} colorClass="bg-teal-500/10 text-teal-500 dark:bg-teal-500/15 dark:text-teal-400" />
         <KpiCard label={`${kpiPrefix} Trips`} value={kpis.trips.toLocaleString()} currentValue={kpis.trips} previousValue={previousKpis.trips} subtitle="Trip count summary" icon={<TruckIcon size={22} />} colorClass="bg-amber-500/10 text-amber-500 dark:bg-amber-500/15 dark:text-amber-400" />

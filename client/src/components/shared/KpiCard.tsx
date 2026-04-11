@@ -35,39 +35,39 @@ export default function KpiCard({
   const badDirection = invertTrend ? isPositive : isNegative;
 
   return (
-    <div className="relative p-[18px] min-h-[122px] rounded-[22px] bg-gradient-to-b from-white to-slate-50/95 dark:from-slate-900 dark:to-slate-800/90 border border-slate-200/90 dark:border-slate-700/90 shadow-sm hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col justify-between gap-2.5 kpi-glow">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-[0.72rem] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-2 leading-none">
+    <div className="relative p-3 sm:p-[18px] min-h-[100px] sm:min-h-[122px] rounded-[18px] sm:rounded-[22px] bg-gradient-to-b from-white to-slate-50/95 dark:from-slate-900 dark:to-slate-800/90 border border-slate-200/90 dark:border-slate-700/90 shadow-sm hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col justify-between gap-1.5 sm:gap-2.5 kpi-glow">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-[0.65rem] sm:text-[0.72rem] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-1 sm:mb-2 leading-none truncate">
             {label}
           </div>
-          <div className="text-[1.7rem] font-bold leading-none tracking-tight">
+          <div className="text-xl sm:text-[1.7rem] font-bold leading-none tracking-tight truncate">
             {value}
           </div>
         </div>
-        <div className={cn('w-[42px] h-[42px] rounded-[14px] grid place-items-center flex-shrink-0', colorClass)}>
+        <div className={cn('w-8 h-8 sm:w-[42px] sm:h-[42px] rounded-[10px] sm:rounded-[14px] grid place-items-center flex-shrink-0 [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-[22px] sm:[&>svg]:h-[22px]', colorClass)}>
           {icon}
         </div>
       </div>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-slate-500 dark:text-slate-400 leading-tight">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-tight truncate">
           {subtitle}
         </p>
         {delta !== null && !isNeutral && (
           <div
             className={cn(
-              'flex items-center gap-0.5 text-[0.68rem] font-semibold whitespace-nowrap flex-shrink-0 px-1.5 py-0.5 rounded-md',
+              'flex items-center gap-0.5 text-[0.65rem] sm:text-[0.68rem] font-semibold whitespace-nowrap flex-shrink-0 px-1.5 py-0.5 rounded-md w-fit',
               goodDirection && 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
               badDirection && 'text-red-500 dark:text-red-400 bg-red-500/10',
             )}
           >
-            {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            {isPositive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
             <span>{isPositive ? '+' : ''}{delta.toFixed(1)}%</span>
           </div>
         )}
         {isNeutral && previousValue !== undefined && previousValue > 0 && (
-          <div className="flex items-center gap-0.5 text-[0.68rem] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap flex-shrink-0 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800">
-            <Minus size={12} />
+          <div className="flex items-center gap-0.5 text-[0.65rem] sm:text-[0.68rem] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap flex-shrink-0 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 w-fit">
+            <Minus size={11} />
             <span>0%</span>
           </div>
         )}

@@ -27,26 +27,36 @@ export default function ExpenseBreakdownModal({ open, onClose, truckId, dateIso,
 
   useEffect(() => {
     if (!open || !truckId || !dateIso) return;
-    
-    let cancelled = false;
-    setLoading(true);
-    
-    api.get('/expenses/by-date', { params: { truck: truckId, date: dateIso } })
-      .then(({ data }) => {
-        if (cancelled) return;
-        setItems(data.items || []);
-        setTotal(data.total || 0);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setItems([]);
-        setTotal(0);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
 
-    return () => { cancelled = true; };
+    let cancelled = false;
+
+    const fetchExpenses = async () => {
+      setLoading(true);
+      try {
+        const { data } = await api.get('/expenses/by-date', {
+          params: { truck: truckId, date: dateIso },
+        });
+        if (!cancelled) {
+          setItems(data.items || []);
+          setTotal(data.total || 0);
+        }
+      } catch {
+        if (!cancelled) {
+          setItems([]);
+          setTotal(0);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchExpenses();
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, truckId, dateIso]);
 
   return (

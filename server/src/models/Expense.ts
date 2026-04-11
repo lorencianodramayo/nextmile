@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IExpense extends Document {
   truck: Types.ObjectId;
+  createdBy?: Types.ObjectId;
   date: Date;
   category: string;
   amount: number;
@@ -18,6 +19,11 @@ const ExpenseSchema = new Schema<IExpense>(
       ref: 'Truck',
       required: true,
       index: true,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
     },
     date: {
       type: Date,

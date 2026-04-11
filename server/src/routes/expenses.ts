@@ -67,13 +67,11 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const { truck, month } = req.query;
     const filter: any = {};
 
-    // Employees can only see expenses for their assigned truck
+    // Employees can only see their own expenses
     if (req.user?.role === 'employee') {
+      filter.createdBy = req.user._id;
       if (req.user.truck) {
         filter.truck = req.user.truck;
-      } else {
-        res.json({ rows: [] });
-        return;
       }
     } else if (truck) {
       filter.truck = truck;
@@ -156,6 +154,7 @@ router.post('/', validateExpenseData, async (req: AuthRequest, res: Response) =>
 
     const expense = await Expense.create({
       truck: truck._id,
+      createdBy: req.user?._id || null,
       date: parsedDate,
       category: category.trim(),
       amount: Number(amount) || 0,

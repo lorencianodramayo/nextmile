@@ -338,8 +338,21 @@ export const useAppStore = create<AppState>((set, get) => ({
       }));
       set({ truckOptions });
 
-      // Auto-select first truck if none selected
-      if (!get().selectedTruck && truckOptions.length > 0) {
+      // Check if user is admin (from auth store in localStorage)
+      const storedUser = localStorage.getItem('nm_user');
+      const isAdmin = storedUser ? JSON.parse(storedUser).role === 'admin' : true;
+
+      // For employees with assigned truck, force-select it
+      if (!isAdmin && storedUser) {
+        const userObj = JSON.parse(storedUser);
+        const assignedTruck = typeof userObj.truck === 'object' && userObj.truck
+          ? userObj.truck._id
+          : userObj.truck;
+        if (assignedTruck && truckOptions.find(t => t._id === assignedTruck)) {
+          set({ selectedTruck: assignedTruck });
+        }
+      } else if (!get().selectedTruck && truckOptions.length > 0) {
+        // Admin: auto-select first truck if none selected
         set({ selectedTruck: truckOptions[0]._id });
       }
 
@@ -347,8 +360,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       // Now fetch dashboard data
       await get().fetchDashboard();
-      // Only fetch expenses for admin (employees get 403)
-      try { await get().fetchExpenses(); } catch { /* employees can't access */ }
+      // Only fetch expenses for admin (employees don't have access)
+      if (isAdmin) {
+        await get().fetchExpenses();
+      }
     } catch (err: unknown) {
       console.error('Failed to init app:', err);
       const msg = getErrorMessage(err, 'Failed to initialize app');
@@ -404,6 +419,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   fetchExpenses: async () => {
+    // Skip for non-admin users (they get 403)
+    const storedUser = localStorage.getItem('nm_user');
+    if (storedUser) {
+      const u = JSON.parse(storedUser);
+      if (u.role !== 'admin') return;
+    }
+
     const state = get();
     try {
       const params: Record<string, string> = {};

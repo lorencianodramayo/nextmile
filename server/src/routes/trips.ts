@@ -87,13 +87,23 @@ router.delete('/bulk-delete', requireAdmin, async (req: Request, res: Response) 
 });
 
 // GET /api/trips?truck=&start=&end=
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const { truck, start, end } = req.query;
 
     const filter: any = {};
 
-    if (truck) {
+    // Employees can only see trips for their assigned truck
+    if (req.user?.role === 'employee') {
+      if (req.user.truck) {
+        filter.truck = req.user.truck;
+      } else {
+        // Employee with no assigned truck sees nothing
+        res.json({ rows: [] });
+        return;
+      }
+    } else if (truck) {
+      // Admin can filter by any truck
       const truckDoc = await Truck.findById(truck);
       if (!truckDoc) {
         res.json({ rows: [] });

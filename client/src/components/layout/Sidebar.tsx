@@ -41,7 +41,7 @@ export default function Sidebar() {
       )}
     >
       {/* Header */}
-      <div className={cn('flex items-center gap-2 pb-3 border-b border-slate-200/60 dark:border-slate-700/60', sidebarCollapsed ? 'justify-center' : 'justify-between')}>
+      <div className={cn('flex items-center gap-2 pb-3 border-b border-slate-200/60 dark:border-slate-700/60', sidebarCollapsed ? 'flex-col' : 'justify-between')}>
         {isOpen && (
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-xl grid place-items-center font-black text-white bg-gradient-to-br from-blue-600 to-blue-700 shadow-md flex-shrink-0 text-sm">
@@ -54,7 +54,7 @@ export default function Sidebar() {
           </div>
         )}
         {sidebarCollapsed && (
-          <div className="w-9 h-9 rounded-xl grid place-items-center font-black text-white bg-gradient-to-br from-blue-600 to-blue-700 shadow-md text-sm lg:block hidden">
+          <div className="hidden lg:grid w-9 h-9 rounded-xl place-items-center font-black text-white bg-gradient-to-br from-blue-600 to-blue-700 shadow-md text-sm">
             N
           </div>
         )}

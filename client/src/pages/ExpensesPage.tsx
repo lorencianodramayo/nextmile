@@ -152,7 +152,11 @@ export default function ExpensesPage() {
                       ) : undefined}
                     />
                   </td></tr>
-                ) : paginatedExpenses.map((r) => (
+                ) : paginatedExpenses.map((r) => {
+                  // Employees can only edit/delete today's expenses (past = processed)
+                  const today = new Date().toISOString().slice(0, 10);
+                  const canModify = admin || r.dateIso >= today;
+                  return (
                   <tr key={r._id} className="hover:bg-blue-50/50 dark:hover:bg-slate-800/50">
                     <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">{r.dateText}</td>
                     <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
@@ -180,13 +184,18 @@ export default function ExpensesPage() {
                       </td>
                     )}
                     <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                      <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => openEdit(r)} className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-600 transition-all"><Pencil size={14} /></button>
-                        <button onClick={() => setDeleteModal(r)} className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
-                      </div>
+                      {canModify ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => openEdit(r)} className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-600 transition-all"><Pencil size={14} /></button>
+                          <button onClick={() => setDeleteModal(r)} className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
+                        </div>
+                      ) : (
+                        <span className="text-slate-300 dark:text-slate-600 text-[0.65rem]">Processed</span>
+                      )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

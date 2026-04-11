@@ -32,7 +32,8 @@ app.use('/api/auth', authRoutes);
 // Trucks: GET is for all users (employees need truck list for trip form), POST/PUT/DELETE are admin-protected inside the route
 app.use('/api/trucks', requireAuth, truckRoutes);
 app.use('/api/trips', requireAuth, tripRoutes);
-app.use('/api/expenses', requireAuth, requireAdmin, expenseRoutes);
+// Expenses: by-date is allowed for all (note click), rest is admin-only (handled inside route)
+app.use('/api/expenses', requireAuth, expenseRoutes);
 app.use('/api/dashboard', requireAuth, dashboardRoutes);
 app.use('/api/users', userRoutes); // already has its own auth middleware
 app.use('/api/payments', paymentRoutes); // already has its own auth middleware

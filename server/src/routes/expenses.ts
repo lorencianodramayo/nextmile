@@ -3,6 +3,7 @@ import { Expense } from '../models/Expense.js';
 import { Truck } from '../models/Truck.js';
 import { syncTripsForDate } from '../services/tripService.js';
 import { validateExpenseData, validateExpenseUpdate } from '../middleware/validate.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -60,8 +61,8 @@ router.get('/by-date', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/expenses?truck=&month=
-router.get('/', async (req: Request, res: Response) => {
+// GET /api/expenses?truck=&month= (admin only)
+router.get('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { truck, month } = req.query;
     const filter: any = {};
@@ -106,8 +107,8 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/expenses
-router.post('/', validateExpenseData, async (req: Request, res: Response) => {
+// POST /api/expenses (admin only)
+router.post('/', requireAdmin, validateExpenseData, async (req: Request, res: Response) => {
   try {
     const { truckId, date, category, amount, description } = req.body;
 
@@ -154,8 +155,8 @@ router.post('/', validateExpenseData, async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/expenses/:id
-router.put('/:id', validateExpenseUpdate, async (req: Request, res: Response) => {
+// PUT /api/expenses/:id (admin only)
+router.put('/:id', requireAdmin, validateExpenseUpdate, async (req: Request, res: Response) => {
   try {
     const { date, category, amount, description } = req.body;
 
@@ -188,8 +189,8 @@ router.put('/:id', validateExpenseUpdate, async (req: Request, res: Response) =>
   }
 });
 
-// PATCH /api/expenses/:id/toggle-reimbursed
-router.patch('/:id/toggle-reimbursed', async (req: Request, res: Response) => {
+// PATCH /api/expenses/:id/toggle-reimbursed (admin only)
+router.patch('/:id/toggle-reimbursed', requireAdmin, async (req: Request, res: Response) => {
   try {
     const expense = await Expense.findById(req.params.id);
     if (!expense) {
@@ -209,8 +210,8 @@ router.patch('/:id/toggle-reimbursed', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/expenses/:id
-router.delete('/:id', async (req: Request, res: Response) => {
+// DELETE /api/expenses/:id (admin only)
+router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const expense = await Expense.findById(req.params.id);
     if (!expense) {

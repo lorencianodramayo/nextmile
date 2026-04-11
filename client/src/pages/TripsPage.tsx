@@ -169,15 +169,21 @@ export default function TripsPage() {
         <TripTable
           rows={paginatedRows}
           loading={loading}
-          showActions={admin}
+          showActions
           selectable={admin}
           selectedIds={admin ? selectedTripIds : []}
           onSelectionChange={admin ? setSelectedTripIds : undefined}
           onTogglePaid={admin ? (id) => toggleTripPaid(id) : undefined}
-          onEdit={admin ? (r) => { setEditRow(r); setDuplicateFrom(null); setTripModal(true); } : undefined}
-          onDelete={admin ? (r) => setDeleteModal(r) : undefined}
+          onEdit={(r) => {
+            if (!admin && r.paid) return;
+            setEditRow(r); setDuplicateFrom(null); setTripModal(true);
+          }}
+          onDelete={(r) => {
+            if (!admin && r.paid) return;
+            setDeleteModal(r);
+          }}
           onDuplicate={admin ? handleDuplicate : undefined}
-          onExpenseClick={admin ? (data) => setExpenseBreakdown(data) : undefined}
+          onExpenseClick={(data) => setExpenseBreakdown(data)}
           selectedTruck={selectedTruck}
           showTruckColumn={!selectedTruck}
           onQuickEdit={admin ? quickEditTrip : undefined}

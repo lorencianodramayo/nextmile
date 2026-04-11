@@ -1,13 +1,15 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useAppStore, type TripRow } from '../store/useAppStore';
 import KpiCard from '../components/shared/KpiCard';
 import FilterBar from '../components/shared/FilterBar';
 import TripModal from '../components/shared/TripModal';
-import { peso, pesoCompact, cn } from '../lib/utils';
+import TripTable from '../components/shared/TripTable';
+import ErrorState from '../components/shared/ErrorState';
+import { peso, pesoCompact } from '../lib/utils';
 import { exportTripsCsv, exportPayslip } from '../lib/exportHelpers';
 import {
   DollarSign, CheckCircle2, Truck as TruckIcon, BarChart3, ArrowUpDown,
-  Plus, Search, Download, FileText, Pencil, Trash2, Check, AlertTriangle,
+  Plus, Search, Download, FileText, AlertTriangle, CheckCheck, XCircle, Trash2,
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart,
@@ -16,18 +18,29 @@ import Modal from '../components/shared/Modal';
 import Pagination from '../components/shared/Pagination';
 import { usePagination } from '../hooks/usePagination';
 import ExpenseBreakdownModal from '../components/shared/ExpenseBreakdownModal';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 export default function DashboardPage() {
   const {
-    tripRows, kpis, chartData, loading, selectedTruck, truckOptions,
-    initApp, deleteTrip, toggleTripPaid, searchQuery, setSearchQuery, startDate, endDate, rangePreset,
+    tripRows, kpis, previousKpis, chartData, loading, error, selectedTruck, truckOptions,
+    initApp, fetchDashboard, deleteTrip, toggleTripPaid, searchQuery, setSearchQuery, startDate, endDate, rangePreset,
+    selectedTripIds, setSelectedTripIds, bulkTogglePaid, bulkDeleteTrips, quickEditTrip,
   } = useAppStore();
 
   const [tripModal, setTripModal] = useState(false);
   const [editRow, setEditRow] = useState<TripRow | null>(null);
+  const [duplicateFrom, setDuplicateFrom] = useState<TripRow | null>(null);
   const [deleteModal, setDeleteModal] = useState<TripRow | null>(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [showTruckWarning, setShowTruckWarning] = useState(false);
   const [expenseBreakdown, setExpenseBreakdown] = useState<{truckId: string; dateIso: string; dateText: string} | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useKeyboardShortcuts({
+    onNewTrip: () => handleAddTrip(),
+    onSearch: () => searchInputRef.current?.focus(),
+  });
 
   useEffect(() => {
     initApp();
@@ -38,11 +51,31 @@ export default function DashboardPage() {
   const kpiPrefix = rangeLabels[rangePreset] || 'Selected';
   const pageTitle = selectedTruckName ? `${selectedTruckName} Overview` : 'Overview';
 
+  // Sorting state
+  const [sortField, setSortField] = useState('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = useCallback((field: string) => {
+    setSortDirection((prev) => (sortField === field ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'));
+    setSortField(field);
+  }, [sortField]);
+
   const filteredRows = useMemo(() => {
-    if (!searchQuery) return tripRows;
-    const q = searchQuery.toLowerCase();
-    return tripRows.filter((r) => r.shipmentNumber.toLowerCase().includes(q));
-  }, [tripRows, searchQuery]);
+    let rows = tripRows;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      rows = rows.filter((r) => r.shipmentNumber.toLowerCase().includes(q));
+    }
+    if (sortField) {
+      rows = [...rows].sort((a, b) => {
+        const aVal = (a as unknown as Record<string, number | string>)[sortField] ?? 0;
+        const bVal = (b as unknown as Record<string, number | string>)[sortField] ?? 0;
+        const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        return sortDirection === 'asc' ? cmp : -cmp;
+      });
+    }
+    return rows;
+  }, [tripRows, searchQuery, sortField, sortDirection]);
 
   const { paginatedItems: paginatedRows, currentPage, totalPages, totalItems, pageSize, handlePageChange, handlePageSizeChange } = usePagination(filteredRows, 20);
 
@@ -52,6 +85,13 @@ export default function DashboardPage() {
       return;
     }
     setEditRow(null);
+    setDuplicateFrom(null);
+    setTripModal(true);
+  };
+
+  const handleDuplicate = (row: TripRow) => {
+    setEditRow(null);
+    setDuplicateFrom(row);
     setTripModal(true);
   };
 
@@ -69,15 +109,21 @@ export default function DashboardPage() {
     setDeleteModal(null);
   };
 
-  const statusBadge = (status: string) => {
-    const s = status.toUpperCase();
-    if (s === 'WORKING DAY') return 'bg-green-500/10 text-green-500 border-green-500/20';
-    if (s === 'HOLIDAY') return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-    return 'bg-slate-400/10 text-slate-400 border-slate-400/20';
+  const handleBulkDelete = async () => {
+    await bulkDeleteTrips(selectedTripIds);
+    setBulkDeleteModal(false);
   };
 
   return (
     <div>
+      {/* Error State */}
+      {error && !loading && (
+        <ErrorState
+          message={error}
+          onRetry={() => fetchDashboard()}
+        />
+      )}
+
       {/* Header */}
       <div className="glass-card rounded-[28px] border border-slate-200/80 dark:border-slate-700/90 shadow-lg p-5 mb-3.5">
         <div className="flex flex-col md:flex-row justify-between md:items-end gap-3">
@@ -108,11 +154,11 @@ export default function DashboardPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-3">
-        <KpiCard label={`${kpiPrefix} Gross`} value={pesoCompact(kpis.gross)} subtitle="Total gross income" icon={<DollarSign size={22} />} colorClass="bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400" />
-        <KpiCard label={`${kpiPrefix} Net`} value={pesoCompact(kpis.net)} subtitle="After salary and expenses" icon={<CheckCircle2 size={22} />} colorClass="bg-teal-500/10 text-teal-500 dark:bg-teal-500/15 dark:text-teal-400" />
-        <KpiCard label={`${kpiPrefix} Trips`} value={kpis.trips.toLocaleString()} subtitle="Trip count summary" icon={<TruckIcon size={22} />} colorClass="bg-amber-500/10 text-amber-500 dark:bg-amber-500/15 dark:text-amber-400" />
-        <KpiCard label={`${kpiPrefix} Payable`} value={pesoCompact(kpis.payable)} subtitle="Crew payable total" icon={<BarChart3 size={22} />} colorClass="bg-cyan-500/10 text-cyan-500 dark:bg-cyan-500/15 dark:text-cyan-400" />
-        <KpiCard label={`${kpiPrefix} Cash Outflow`} value={pesoCompact(kpis.cashOutflow)} subtitle="Actual cash paid to crew" icon={<ArrowUpDown size={22} />} colorClass="bg-pink-500/10 text-pink-500 dark:bg-pink-500/15 dark:text-pink-400" />
+        <KpiCard label={`${kpiPrefix} Gross`} value={pesoCompact(kpis.gross)} currentValue={kpis.gross} previousValue={previousKpis.gross} subtitle="Total gross income" icon={<DollarSign size={22} />} colorClass="bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400" />
+        <KpiCard label={`${kpiPrefix} Net`} value={pesoCompact(kpis.net)} currentValue={kpis.net} previousValue={previousKpis.net} subtitle="After salary and expenses" icon={<CheckCircle2 size={22} />} colorClass="bg-teal-500/10 text-teal-500 dark:bg-teal-500/15 dark:text-teal-400" />
+        <KpiCard label={`${kpiPrefix} Trips`} value={kpis.trips.toLocaleString()} currentValue={kpis.trips} previousValue={previousKpis.trips} subtitle="Trip count summary" icon={<TruckIcon size={22} />} colorClass="bg-amber-500/10 text-amber-500 dark:bg-amber-500/15 dark:text-amber-400" />
+        <KpiCard label={`${kpiPrefix} Payable`} value={pesoCompact(kpis.payable)} currentValue={kpis.payable} previousValue={previousKpis.payable} subtitle="Crew payable total" icon={<BarChart3 size={22} />} colorClass="bg-cyan-500/10 text-cyan-500 dark:bg-cyan-500/15 dark:text-cyan-400" invertTrend />
+        <KpiCard label={`${kpiPrefix} Cash Outflow`} value={pesoCompact(kpis.cashOutflow)} currentValue={kpis.cashOutflow} previousValue={previousKpis.cashOutflow} subtitle="Actual cash paid to crew" icon={<ArrowUpDown size={22} />} colorClass="bg-pink-500/10 text-pink-500 dark:bg-pink-500/15 dark:text-pink-400" invertTrend />
       </div>
 
       {/* Charts */}
@@ -162,8 +208,9 @@ export default function DashboardPage() {
             <div className="flex-grow min-w-[240px] relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
+                ref={searchInputRef}
                 type="text"
-                placeholder="Search Shipment Number..."
+                placeholder="Search Shipment Number... ( / )"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full min-h-[44px] rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm pl-9 pr-3.5 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 outline-none transition-colors"
@@ -178,99 +225,74 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-[18px] overflow-auto border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900">
-          <table className="w-full trip-table">
-            <thead>
-              <tr>
-                {['Week', 'Date', 'Status', 'Shipment #', 'Rate', 'Trips', 'Crew Salary', 'Cash Adv.', 'Reimb.', 'Expenses', 'Note', 'Gross', 'Net', 'Payable', 'Action'].map((h) => (
-                  <th key={h} className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 px-2.5 py-3 whitespace-nowrap">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={15} className="text-center py-12 text-slate-400"><div className="animate-pulse">Loading...</div></td></tr>
-              ) : filteredRows.length === 0 ? (
-                <tr><td colSpan={15} className="text-center py-12 text-slate-400">No rows found</td></tr>
-              ) : (
-                paginatedRows.map((r) => (
-                  <tr
-                    key={r._id}
-                    className={cn(
-                      'hover:bg-blue-50/50 dark:hover:bg-slate-800/50',
-                      r.status === 'Holiday' && 'bg-amber-50/50 dark:bg-amber-500/5',
-                      r.status === 'Day Off' && 'bg-slate-50/80 dark:bg-slate-800/30 text-slate-400'
-                    )}
-                  >
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{r.week}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">{r.dateText}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                      <span className={cn('inline-block px-3 py-1.5 rounded-full text-xs font-bold border', statusBadge(r.status))}>
-                        {r.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 font-semibold text-orange-500">{r.shipmentNumber}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.rate)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{r.trips}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.crewSalary)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.cashAdvance)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.reimbursements)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.expenses)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 max-w-[120px]">
-                      {(r as any).hasExpenses || r.note ? (
-                        <button
-                          onClick={() => { if ((r as any).hasExpenses) setExpenseBreakdown({ truckId: typeof r.truck === 'string' ? r.truck : (r.truck as any)?._id || selectedTruck, dateIso: r.dateIso, dateText: r.dateText }); }}
-                          className={cn('text-left text-xs truncate block max-w-[120px]', (r as any).hasExpenses ? 'text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium' : 'text-slate-500 cursor-default')}
-                          title={r.note}
-                        >{r.note || '—'}</button>
-                      ) : (<span className="text-slate-300">—</span>)}
-                    </td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.grossIncome)}</td>
-                    <td className={cn('text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 font-semibold', r.netIncome < 0 ? 'text-red-500' : 'text-green-500')}>{peso(r.netIncome)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 text-red-500 font-semibold">{r.paid ? '₱0.00' : peso(r.payable)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => toggleTripPaid(r._id)}
-                          className={cn(
-                            'w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border transition-all',
-                            r.paid
-                              ? 'bg-green-500/10 border-green-500/25 text-green-500 hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-500'
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-green-500/10 hover:border-green-500/25 hover:text-green-500'
-                          )}
-                          title="Toggle paid"
-                        >
-                          <Check size={14} />
-                        </button>
-                        <button
-                          onClick={() => { setEditRow(r); setTripModal(true); }}
-                          className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-600 transition-all"
-                          title="Edit"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteModal(r)}
-                          className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-500 transition-all"
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <TripTable
+          rows={paginatedRows}
+          loading={loading}
+          showActions
+          selectable
+          selectedIds={selectedTripIds}
+          onSelectionChange={setSelectedTripIds}
+          onTogglePaid={(id) => toggleTripPaid(id)}
+          onEdit={(r) => { setEditRow(r); setDuplicateFrom(null); setTripModal(true); }}
+          onDelete={(r) => setDeleteModal(r)}
+          onDuplicate={handleDuplicate}
+          onExpenseClick={(data) => setExpenseBreakdown(data)}
+          selectedTruck={selectedTruck}
+          onQuickEdit={quickEditTrip}
+          sortable
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+        />
         <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} pageSize={pageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
       </div>
 
+      {/* Floating Bulk Action Bar */}
+      <AnimatePresence>
+        {selectedTripIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-lg"
+          >
+            <div className="glass-card rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-[0_8px_32px_rgba(37,99,235,0.18)] dark:shadow-[0_8px_32px_rgba(37,99,235,0.25)] px-4 py-3 flex flex-wrap items-center justify-center gap-2">
+              <span className="text-sm font-semibold whitespace-nowrap">
+                {selectedTripIds.length} trip{selectedTripIds.length !== 1 ? 's' : ''} selected
+              </span>
+              <div className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700" />
+              <button
+                onClick={() => bulkTogglePaid(selectedTripIds, true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors"
+              >
+                <CheckCheck size={15} /> Paid
+              </button>
+              <button
+                onClick={() => bulkTogglePaid(selectedTripIds, false)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+              >
+                <XCircle size={15} /> Unpaid
+              </button>
+              <button
+                onClick={() => setBulkDeleteModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
+              >
+                <Trash2 size={15} /> Delete
+              </button>
+              <button
+                onClick={() => setSelectedTripIds([])}
+                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Trip Modal */}
-      <TripModal open={tripModal} onClose={() => { setTripModal(false); setEditRow(null); }} editRow={editRow} />
+      <TripModal open={tripModal} onClose={() => { setTripModal(false); setEditRow(null); setDuplicateFrom(null); }} editRow={editRow} duplicateFrom={duplicateFrom} />
 
       {/* Delete Confirmation */}
       <Modal
@@ -286,6 +308,22 @@ export default function DashboardPage() {
       >
         <p>Are you sure you want to delete this trip?</p>
         <p className="font-bold mt-1">{deleteModal?.dateText} / {deleteModal?.shipmentNumber}</p>
+      </Modal>
+
+      {/* Bulk Delete Confirmation */}
+      <Modal
+        open={bulkDeleteModal}
+        onClose={() => setBulkDeleteModal(false)}
+        title="Delete selected trips?"
+        footer={
+          <>
+            <button onClick={() => setBulkDeleteModal(false)} className="px-4 py-2.5 rounded-[14px] border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+            <button onClick={handleBulkDelete} className="px-6 py-2.5 rounded-[14px] bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors">Delete {selectedTripIds.length} Trip{selectedTripIds.length !== 1 ? 's' : ''}</button>
+          </>
+        }
+      >
+        <p>Are you sure you want to delete <strong>{selectedTripIds.length}</strong> selected trip{selectedTripIds.length !== 1 ? 's' : ''}?</p>
+        <p className="text-sm text-slate-500 mt-1">This action cannot be undone.</p>
       </Modal>
 
       {/* Expense Breakdown Modal */}

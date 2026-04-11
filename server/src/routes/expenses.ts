@@ -2,8 +2,27 @@ import { Router, Request, Response } from 'express';
 import { Expense } from '../models/Expense.js';
 import { Truck } from '../models/Truck.js';
 import { syncTripsForDate } from '../services/tripService.js';
+import { validateExpenseData, validateExpenseUpdate } from '../middleware/validate.js';
 
 const router = Router();
+
+// GET /api/expenses/categories?truck=
+router.get('/categories', async (req: Request, res: Response) => {
+  try {
+    const { truck } = req.query;
+    const filter: any = {};
+    if (truck) filter.truck = truck;
+
+    const categories: string[] = await Expense.find(filter).distinct('category');
+    const cleaned = categories
+      .map((c: string) => c.trim())
+      .filter(Boolean)
+      .sort();
+    res.json({ categories: cleaned });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/expenses/by-date?truck=&date= (MUST be before /:id routes)
 router.get('/by-date', async (req: Request, res: Response) => {
@@ -87,7 +106,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // POST /api/expenses
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', validateExpenseData, async (req: Request, res: Response) => {
   try {
     const { truckId, date, category, amount, description } = req.body;
 
@@ -135,7 +154,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT /api/expenses/:id
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', validateExpenseUpdate, async (req: Request, res: Response) => {
   try {
     const { date, category, amount, description } = req.body;
 

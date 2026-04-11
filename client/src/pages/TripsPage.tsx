@@ -1,38 +1,81 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useAppStore, type TripRow } from '../store/useAppStore';
 import FilterBar from '../components/shared/FilterBar';
 import TripModal from '../components/shared/TripModal';
+import TripTable from '../components/shared/TripTable';
 import Modal from '../components/shared/Modal';
-import { peso, cn } from '../lib/utils';
 import { exportTripsCsv, exportPayslip } from '../lib/exportHelpers';
-import { Plus, Search, Download, FileText, Pencil, Trash2, Check, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Download, FileText, AlertTriangle, CheckCheck, XCircle, Trash2, Route } from 'lucide-react';
 import Pagination from '../components/shared/Pagination';
 import { usePagination } from '../hooks/usePagination';
 import ExpenseBreakdownModal from '../components/shared/ExpenseBreakdownModal';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import EmptyState from '../components/shared/EmptyState';
 
 export default function TripsPage() {
-  const { tripRows, loading, selectedTruck, truckOptions, initApp, deleteTrip, toggleTripPaid, searchQuery, setSearchQuery, startDate, endDate } = useAppStore();
+  const {
+    tripRows, loading, selectedTruck, truckOptions, initApp, deleteTrip, toggleTripPaid,
+    searchQuery, setSearchQuery, startDate, endDate,
+    selectedTripIds, setSelectedTripIds, bulkTogglePaid, bulkDeleteTrips, quickEditTrip,
+  } = useAppStore();
+
   const [tripModal, setTripModal] = useState(false);
   const [editRow, setEditRow] = useState<TripRow | null>(null);
+  const [duplicateFrom, setDuplicateFrom] = useState<TripRow | null>(null);
   const [deleteModal, setDeleteModal] = useState<TripRow | null>(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [showTruckWarning, setShowTruckWarning] = useState(false);
   const [expenseBreakdown, setExpenseBreakdown] = useState<{truckId: string; dateIso: string; dateText: string} | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useKeyboardShortcuts({
+    onNewTrip: () => handleAddTrip(),
+    onSearch: () => searchInputRef.current?.focus(),
+  });
 
   useEffect(() => { initApp(); }, []);
 
   const selectedTruckName = truckOptions.find((t) => t._id === selectedTruck)?.truckName;
   const pageTitle = selectedTruckName ? `${selectedTruckName} Trips` : 'Trips';
 
+  // Sorting state
+  const [sortField, setSortField] = useState('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = useCallback((field: string) => {
+    setSortDirection((prev) => (sortField === field ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'));
+    setSortField(field);
+  }, [sortField]);
+
   const filteredRows = useMemo(() => {
-    if (!searchQuery) return tripRows;
-    return tripRows.filter((r) => r.shipmentNumber.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [tripRows, searchQuery]);
+    let rows = tripRows;
+    if (searchQuery) {
+      rows = rows.filter((r) => r.shipmentNumber.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    if (sortField) {
+      rows = [...rows].sort((a, b) => {
+        const aVal = (a as unknown as Record<string, number | string>)[sortField] ?? 0;
+        const bVal = (b as unknown as Record<string, number | string>)[sortField] ?? 0;
+        const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        return sortDirection === 'asc' ? cmp : -cmp;
+      });
+    }
+    return rows;
+  }, [tripRows, searchQuery, sortField, sortDirection]);
 
   const { paginatedItems: paginatedRows, currentPage, totalPages, totalItems, pageSize, handlePageChange, handlePageSizeChange } = usePagination(filteredRows, 20);
 
   const handleAddTrip = () => {
     if (!selectedTruck) { setShowTruckWarning(true); return; }
     setEditRow(null);
+    setDuplicateFrom(null);
+    setTripModal(true);
+  };
+
+  const handleDuplicate = (row: TripRow) => {
+    setEditRow(null);
+    setDuplicateFrom(row);
     setTripModal(true);
   };
 
@@ -42,11 +85,9 @@ export default function TripsPage() {
     exportPayslip(filteredRows, truckLabel, startDate && endDate ? `${startDate} to ${endDate}` : "All Dates");
   };
 
-  const statusBadge = (status: string) => {
-    const s = status.toUpperCase();
-    if (s === 'WORKING DAY') return 'bg-green-500/10 text-green-500 border-green-500/20';
-    if (s === 'HOLIDAY') return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-    return 'bg-slate-400/10 text-slate-400 border-slate-400/20';
+  const handleBulkDelete = async () => {
+    await bulkDeleteTrips(selectedTripIds);
+    setBulkDeleteModal(false);
   };
 
   return (
@@ -82,7 +123,7 @@ export default function TripsPage() {
           <div className="flex gap-2 flex-wrap items-center">
             <div className="flex-grow min-w-[240px] relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input type="text" placeholder="Search Shipment Number..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              <input ref={searchInputRef} type="text" placeholder="Search Shipment Number... ( / )" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full min-h-[44px] rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm pl-9 pr-3.5 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 outline-none transition-colors" />
             </div>
             <button onClick={handleExportCsv} className="min-h-[44px] px-3 rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors flex items-center gap-1.5">
@@ -94,68 +135,108 @@ export default function TripsPage() {
           </div>
         </div>
 
-        <div className="rounded-[18px] overflow-auto border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900">
-          <table className="w-full trip-table">
-            <thead>
-              <tr>
-                {['Week','Date','Status','Shipment #','Rate','Trips','Crew Salary','Cash Adv.','Reimb.','Expenses','Note','Gross','Net','Payable','Action'].map((h) => (
-                  <th key={h} className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 px-2.5 py-3 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={15} className="text-center py-12 text-slate-400 animate-pulse">Loading...</td></tr>
-              ) : filteredRows.length === 0 ? (
-                <tr><td colSpan={15} className="text-center py-12 text-slate-400">No rows found</td></tr>
-              ) : (
-                paginatedRows.map((r) => (
-                  <tr key={r._id} className={cn('hover:bg-blue-50/50 dark:hover:bg-slate-800/50', r.status === 'Holiday' && 'bg-amber-50/50', r.status === 'Day Off' && 'bg-slate-50/80 text-slate-400')}>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{r.week}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">{r.dateText}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                      <span className={cn('inline-block px-3 py-1.5 rounded-full text-xs font-bold border', statusBadge(r.status))}>{r.status.toUpperCase()}</span>
-                    </td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 font-semibold text-orange-500">{r.shipmentNumber}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.rate)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{r.trips}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.crewSalary)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.cashAdvance)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.reimbursements)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.expenses)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 max-w-[120px]">
-                      {(r as any).hasExpenses || r.note ? (
-                        <button
-                          onClick={() => { if ((r as any).hasExpenses) setExpenseBreakdown({ truckId: typeof r.truck === 'string' ? r.truck : (r.truck as any)?._id || selectedTruck, dateIso: r.dateIso, dateText: r.dateText }); }}
-                          className={cn('text-left text-xs truncate block max-w-[120px]', (r as any).hasExpenses ? 'text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium' : 'text-slate-500 cursor-default')}
-                          title={r.note}
-                        >{r.note || '—'}</button>
-                      ) : (<span className="text-slate-300">—</span>)}
-                    </td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">{peso(r.grossIncome)}</td>
-                    <td className={cn('text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 font-semibold', r.netIncome < 0 ? 'text-red-500' : 'text-green-500')}>{peso(r.netIncome)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 text-red-500 font-semibold">{r.paid ? '₱0.00' : peso(r.payable)}</td>
-                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                      <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => toggleTripPaid(r._id)} className={cn('w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border transition-all', r.paid ? 'bg-green-500/10 border-green-500/25 text-green-500 hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-500' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-green-500/10 hover:border-green-500/25 hover:text-green-500')} title="Toggle paid"><Check size={14} /></button>
-                        <button onClick={() => { setEditRow(r); setTripModal(true); }} className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-600 transition-all" title="Edit"><Pencil size={14} /></button>
-                        <button onClick={() => setDeleteModal(r)} className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-500 transition-all" title="Delete"><Trash2 size={14} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <TripTable
+          rows={paginatedRows}
+          loading={loading}
+          showActions
+          selectable
+          selectedIds={selectedTripIds}
+          onSelectionChange={setSelectedTripIds}
+          onTogglePaid={(id) => toggleTripPaid(id)}
+          onEdit={(r) => { setEditRow(r); setDuplicateFrom(null); setTripModal(true); }}
+          onDelete={(r) => setDeleteModal(r)}
+          onDuplicate={handleDuplicate}
+          onExpenseClick={(data) => setExpenseBreakdown(data)}
+          selectedTruck={selectedTruck}
+          onQuickEdit={quickEditTrip}
+          sortable
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          emptyState={
+            <EmptyState
+              icon={Route}
+              title="No trips found"
+              description={selectedTruck
+                ? `No trips recorded for ${selectedTruckName}. Add your first trip to get started!`
+                : "Select a truck and add your first trip to start tracking."
+              }
+              action={selectedTruck ? (
+                <button onClick={handleAddTrip} className="px-4 py-2.5 rounded-[14px] bg-gradient-to-br from-blue-600 to-blue-700 text-white text-sm font-semibold shadow-[0_10px_20px_rgba(37,99,235,0.18)] hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-1.5">
+                  <Plus size={16} /> Add Trip
+                </button>
+              ) : undefined}
+            />
+          }
+        />
 
         <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} pageSize={pageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
       </div>
 
-      <TripModal open={tripModal} onClose={() => { setTripModal(false); setEditRow(null); }} editRow={editRow} />
+      {/* Floating Bulk Action Bar */}
+      <AnimatePresence>
+        {selectedTripIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-lg"
+          >
+            <div className="glass-card rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-[0_8px_32px_rgba(37,99,235,0.18)] dark:shadow-[0_8px_32px_rgba(37,99,235,0.25)] px-4 py-3 flex flex-wrap items-center justify-center gap-2">
+              <span className="text-sm font-semibold whitespace-nowrap">
+                {selectedTripIds.length} trip{selectedTripIds.length !== 1 ? 's' : ''} selected
+              </span>
+              <div className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700" />
+              <button
+                onClick={() => bulkTogglePaid(selectedTripIds, true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors"
+              >
+                <CheckCheck size={15} /> Paid
+              </button>
+              <button
+                onClick={() => bulkTogglePaid(selectedTripIds, false)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+              >
+                <XCircle size={15} /> Unpaid
+              </button>
+              <button
+                onClick={() => setBulkDeleteModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
+              >
+                <Trash2 size={15} /> Delete
+              </button>
+              <button
+                onClick={() => setSelectedTripIds([])}
+                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <TripModal open={tripModal} onClose={() => { setTripModal(false); setEditRow(null); setDuplicateFrom(null); }} editRow={editRow} duplicateFrom={duplicateFrom} />
 
       <Modal open={!!deleteModal} onClose={() => setDeleteModal(null)} title="Delete trip?" footer={<><button onClick={() => setDeleteModal(null)} className="px-4 py-2.5 rounded-[14px] border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</button><button onClick={async () => { if (deleteModal) { await deleteTrip(deleteModal._id); setDeleteModal(null); } }} className="px-6 py-2.5 rounded-[14px] bg-red-500 text-white text-sm font-semibold hover:bg-red-600">Delete</button></>}>
         <p>Are you sure?<br /><strong>{deleteModal?.dateText} / {deleteModal?.shipmentNumber}</strong></p>
+      </Modal>
+
+      {/* Bulk Delete Confirmation */}
+      <Modal
+        open={bulkDeleteModal}
+        onClose={() => setBulkDeleteModal(false)}
+        title="Delete selected trips?"
+        footer={
+          <>
+            <button onClick={() => setBulkDeleteModal(false)} className="px-4 py-2.5 rounded-[14px] border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+            <button onClick={handleBulkDelete} className="px-6 py-2.5 rounded-[14px] bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors">Delete {selectedTripIds.length} Trip{selectedTripIds.length !== 1 ? 's' : ''}</button>
+          </>
+        }
+      >
+        <p>Are you sure you want to delete <strong>{selectedTripIds.length}</strong> selected trip{selectedTripIds.length !== 1 ? 's' : ''}?</p>
+        <p className="text-sm text-slate-500 mt-1">This action cannot be undone.</p>
       </Modal>
 
       <ExpenseBreakdownModal

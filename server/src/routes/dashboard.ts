@@ -7,6 +7,57 @@ import { toISODateString } from '../utils/calculations.js';
 
 const router = Router();
 
+// Helper: calculate KPIs from trips and expenses
+function calculateKpis(rows: any[], expenses: any[]) {
+  let totalGross = 0;
+  let totalTrips = 0;
+  let totalPayable = 0;
+  let totalCashOutflow = 0;
+  let totalCrewSalary = 0;
+
+  rows.forEach((r: any) => {
+    totalGross += r.grossIncome || 0;
+    totalTrips += r.trips || 0;
+    totalCrewSalary += r.crewSalary || 0;
+
+    const originalPayable = (r.crewSalary || 0) - (r.cashAdvance || 0) + (r.reimbursements || 0);
+
+    if (r.paid) {
+      totalCashOutflow += originalPayable;
+    } else {
+      totalPayable += originalPayable;
+    }
+  });
+
+  const totalExpenses = expenses.reduce((sum: number, e: any) => sum + e.amount, 0);
+  const totalNet = totalGross - totalCrewSalary - totalExpenses;
+
+  return {
+    gross: totalGross,
+    net: totalNet,
+    trips: totalTrips,
+    payable: totalPayable,
+    cashOutflow: totalCashOutflow,
+    expenses: totalExpenses,
+  };
+}
+
+// Helper: calculate previous period date range
+function getPreviousPeriodRange(start: string | undefined, end: string | undefined): { prevStart: Date; prevEnd: Date } | null {
+  if (!start || !end) return null;
+
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const durationMs = endDate.getTime() - startDate.getTime();
+
+  const prevEnd = new Date(startDate.getTime() - 1); // day before current start
+  prevEnd.setHours(23, 59, 59, 999);
+  const prevStart = new Date(prevEnd.getTime() - durationMs);
+  prevStart.setHours(0, 0, 0, 0);
+
+  return { prevStart, prevEnd };
+}
+
 // GET /api/dashboard?truck=&start=&end=
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -82,28 +133,29 @@ router.get('/', async (req: Request, res: Response) => {
     const expenses = await Expense.find(expenseFilter);
 
     // Calculate KPIs
-    let totalGross = 0;
-    let totalTrips = 0;
-    let totalPayable = 0;
-    let totalCashOutflow = 0;
-    let totalCrewSalary = 0;
+    const kpis = calculateKpis(rows, expenses);
 
-    rows.forEach((r) => {
-      totalGross += r.grossIncome || 0;
-      totalTrips += r.trips || 0;
-      totalCrewSalary += r.crewSalary || 0;
+    // Calculate previous period KPIs
+    let previousKpis = { gross: 0, net: 0, trips: 0, payable: 0, cashOutflow: 0, expenses: 0 };
+    const prevRange = getPreviousPeriodRange(start as string | undefined, end as string | undefined);
+    if (prevRange) {
+      const prevTripFilter: any = {};
+      if (truck) prevTripFilter.truck = truck;
+      prevTripFilter.date = { $gte: prevRange.prevStart, $lte: prevRange.prevEnd };
 
-      const originalPayable = (r.crewSalary || 0) - (r.cashAdvance || 0) + (r.reimbursements || 0);
+      const prevTrips = await Trip.find(prevTripFilter)
+        .populate('truck', 'truckName')
+        .sort({ date: 1, createdAt: 1 });
 
-      if (r.paid) {
-        totalCashOutflow += originalPayable;
-      } else {
-        totalPayable += originalPayable;
-      }
-    });
+      const prevRows = prevTrips.map((t) => formatTripResponse(t as any));
 
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const totalNet = totalGross - totalCrewSalary - totalExpenses;
+      const prevExpenseFilter: any = {};
+      if (truck) prevExpenseFilter.truck = truck;
+      prevExpenseFilter.date = { $gte: prevRange.prevStart, $lte: prevRange.prevEnd };
+
+      const prevExpenses = await Expense.find(prevExpenseFilter);
+      previousKpis = calculateKpis(prevRows, prevExpenses);
+    }
 
     // Build chart data (monthly aggregation)
     const monthMap: Record<string, { label: string; gross: number; salary: number; expenses: number; trips: number }> = {};
@@ -145,14 +197,8 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json({
       rows,
-      kpis: {
-        gross: totalGross,
-        net: totalNet,
-        trips: totalTrips,
-        payable: totalPayable,
-        cashOutflow: totalCashOutflow,
-        expenses: totalExpenses,
-      },
+      kpis,
+      previousKpis,
       chartData,
       truckOptions,
     });

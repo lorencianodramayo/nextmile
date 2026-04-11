@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import { useAppStore } from '../../store/useAppStore';
 import { cn } from '../../lib/utils';
 import { Menu } from 'lucide-react';
+import KeyboardShortcutsHelp from '../shared/KeyboardShortcutsHelp';
 
 const pageNames: Record<string, string> = {
   '/': 'Dashboard',
@@ -81,6 +82,7 @@ export default function AppLayout() {
           </AnimatePresence>
         </div>
       </main>
+      <KeyboardShortcutsHelp />
     </div>
   );
 }

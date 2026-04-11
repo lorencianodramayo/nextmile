@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { useAppStore, type TruckRow } from '../store/useAppStore';
 import KpiCard from '../components/shared/KpiCard';
 import Modal from '../components/shared/Modal';
@@ -72,7 +73,7 @@ export default function TrucksPage() {
   };
 
   const handleSave = async () => {
-    if (!form.truckName.trim()) { alert('Truck name is required.'); return; }
+    if (!form.truckName.trim()) { toast.error('Truck name is required.', { duration: 6000 }); return; }
     setLoading(true);
     try {
       const payload = {
@@ -83,7 +84,7 @@ export default function TrucksPage() {
       if (editRow) { await updateTruck(editRow._id, payload); }
       else { await addTruck(payload); }
       setTruckModal(false);
-    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to save'); }
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed to save truck', { duration: 7000 }); }
     finally { setLoading(false); }
   };
 
@@ -124,13 +125,16 @@ export default function TrucksPage() {
           <h2 className="text-base font-bold tracking-tight">Fleet Records</h2>
           <p className="text-sm text-slate-500">Truck registry and linked data.</p>
         </div>
-        <div className="rounded-[18px] overflow-auto border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900/95">
-          <table className="w-full">
+        {/* Desktop Table */}
+        <div className="rounded-[18px] overflow-auto border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900/95 hidden md:block">
+          <table className="w-full border-separate border-spacing-0">
             <thead>
               <tr>
-                {['Truck Name', 'Status', 'Date Added', 'Notes', 'Cutoff Start', 'Cutoff End', 'Payday', 'Day Off', 'Actions'].map((h) => (
-                  <th key={h} className="sticky top-0 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 px-3 py-3 whitespace-nowrap">{h}</th>
+                <th className="sticky top-0 left-0 z-20 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 px-3 py-3 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Truck Name</th>
+                {['Status', 'Date Added', 'Notes', 'Cutoff Start', 'Cutoff End', 'Payday', 'Day Off'].map((h) => (
+                  <th key={h} className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 px-3 py-3 whitespace-nowrap">{h}</th>
                 ))}
+                <th className="sticky top-0 right-0 z-20 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 px-3 py-3 whitespace-nowrap shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -138,7 +142,7 @@ export default function TrucksPage() {
                 <tr><td colSpan={9} className="text-center py-12 text-slate-400">No trucks found</td></tr>
               ) : truckRows.map((r) => (
                 <tr key={r._id} className="hover:bg-blue-50/50 dark:hover:bg-slate-800/50">
-                  <td className="text-center text-sm px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 font-bold">{r.truckName}</td>
+                  <td className="sticky left-0 z-[5] bg-white dark:bg-slate-900 text-center text-sm px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 font-bold shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">{r.truckName}</td>
                   <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
                     <span className={cn('inline-flex items-center justify-center min-w-[84px] px-2.5 py-1 rounded-full text-[0.72rem] font-bold',
                       r.status === 'Active' ? 'bg-green-500/10 text-green-500' : 'bg-slate-400/12 text-slate-400'
@@ -150,7 +154,7 @@ export default function TrucksPage() {
                   <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">{r.cutoffEndText}</td>
                   <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">{r.paydayText}</td>
                   <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">{r.dayOffText}</td>
-                  <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                  <td className="sticky right-0 z-[5] bg-white dark:bg-slate-900 text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => openEdit(r)} className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-600 transition-all"><Pencil size={14} /></button>
                       <button onClick={() => setDeleteModal(r)} className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
@@ -160,6 +164,54 @@ export default function TrucksPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="flex flex-col gap-3 md:hidden">
+          {truckRows.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">No trucks found</div>
+          ) : truckRows.map((r) => (
+            <div key={r._id} className="glass-card rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <div className="font-bold text-sm">{r.truckName}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{r.dateAdded}</div>
+                </div>
+                <span className={cn('inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[0.72rem] font-bold',
+                  r.status === 'Active' ? 'bg-green-500/10 text-green-500' : 'bg-slate-400/12 text-slate-400'
+                )}>{r.status}</span>
+              </div>
+              {r.notes && (
+                <div className="text-xs text-slate-500 mb-3">{r.notes}</div>
+              )}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs mb-3">
+                <div>
+                  <div className="text-slate-500">Cutoff Start</div>
+                  <div className="font-semibold">{r.cutoffStartText}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Cutoff End</div>
+                  <div className="font-semibold">{r.cutoffEndText}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Payday</div>
+                  <div className="font-semibold">{r.paydayText}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Day Off</div>
+                  <div className="font-semibold">{r.dayOffText}</div>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-3 border-t border-slate-200 dark:border-slate-700">
+                <button onClick={() => openEdit(r)} className="flex-1 h-9 rounded-xl inline-flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:text-blue-600 transition-all text-xs font-semibold">
+                  <Pencil size={14} /> Edit
+                </button>
+                <button onClick={() => setDeleteModal(r)} className="h-9 w-9 rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:text-red-500 transition-all">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

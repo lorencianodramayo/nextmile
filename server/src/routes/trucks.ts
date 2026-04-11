@@ -3,6 +3,7 @@ import { Truck } from '../models/Truck.js';
 import { Trip } from '../models/Trip.js';
 import { Expense } from '../models/Expense.js';
 import { dayNameShort } from '../utils/calculations.js';
+import { validateTruckData } from '../middleware/validate.js';
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.get('/', async (_req: Request, res: Response) => {
 });
 
 // POST /api/trucks - Create truck
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', validateTruckData, async (req: Request, res: Response) => {
   try {
     const { truckName, status, notes, cutoffStart, cutoffEnd, payday, dayOff } = req.body;
 
@@ -73,7 +74,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT /api/trucks/:id - Update truck
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', validateTruckData, async (req: Request, res: Response) => {
   try {
     const { truckName, status, notes, cutoffStart, cutoffEnd, payday, dayOff } = req.body;
 

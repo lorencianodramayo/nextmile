@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { toast } from 'sonner';
 import api from '../api/client';
 import { type RangePreset, getDateRangeForPreset } from '../lib/dateHelpers';
 
@@ -28,6 +29,7 @@ export interface TripRow {
   reimbursements: number;
   expenses: number;
   note: string;
+  hasExpenses?: boolean;
   grossIncome: number;
   netIncome: number;
   payable: number;
@@ -86,6 +88,7 @@ interface AppState {
   theme: 'light' | 'dark';
   loading: boolean;
   initialized: boolean;
+  error: string | null;
 
   // Data
   truckOptions: TruckOption[];
@@ -93,9 +96,16 @@ interface AppState {
   expenseRows: ExpenseRow[];
   truckRows: TruckRow[];
   kpis: KPIs;
+  previousKpis: KPIs;
   chartData: ChartPoint[];
   reportRows: TripRow[];
   truckStats: { total: number; active: number; inactive: number; sheets: number };
+
+  // Bulk selection
+  selectedTripIds: string[];
+
+  // Expense categories
+  expenseCategories: string[];
 
   // Filters
   selectedTruck: string;
@@ -110,6 +120,7 @@ interface AppState {
   toggleSidebar: () => void;
   toggleTheme: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
+  setError: (error: string | null) => void;
   setSelectedTruck: (id: string) => void;
   setRangePreset: (preset: RangePreset) => void;
   setStartDate: (date: string) => void;
@@ -118,6 +129,14 @@ interface AppState {
   setReportsMonth: (month: string) => void;
   setSearchQuery: (q: string) => void;
 
+  // Bulk actions
+  setSelectedTripIds: (ids: string[]) => void;
+  bulkTogglePaid: (ids: string[], paid: boolean) => Promise<void>;
+  bulkDeleteTrips: (ids: string[]) => Promise<void>;
+
+  // Expense categories
+  fetchExpenseCategories: () => Promise<void>;
+
   // Data fetching
   initApp: () => Promise<void>;
   fetchDashboard: () => Promise<void>;
@@ -125,7 +144,11 @@ interface AppState {
   fetchTrucks: () => Promise<void>;
   fetchReports: () => Promise<void>;
 
+  // Duplicate / last trip
+  getLastTrip: (truckId: string) => Promise<TripRow | null>;
+
   // CRUD
+  quickEditTrip: (id: string, field: string, value: number | string) => Promise<void>;
   addTrip: (data: Record<string, unknown>) => Promise<void>;
   updateTrip: (id: string, data: Record<string, unknown>) => Promise<void>;
   deleteTrip: (id: string) => Promise<void>;
@@ -154,6 +177,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   theme: getStoredTheme(),
   loading: false,
   initialized: false,
+  error: null,
 
   // Data
   truckOptions: [],
@@ -161,9 +185,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   expenseRows: [],
   truckRows: [],
   kpis: { gross: 0, net: 0, trips: 0, payable: 0, cashOutflow: 0, expenses: 0 },
+  previousKpis: { gross: 0, net: 0, trips: 0, payable: 0, cashOutflow: 0, expenses: 0 },
   chartData: [],
   reportRows: [],
   truckStats: { total: 0, active: 0, inactive: 0, sheets: 0 },
+
+  // Bulk selection
+  selectedTripIds: [],
+
+  // Expense categories
+  expenseCategories: [],
 
   // Filters
   selectedTruck: '',
@@ -185,6 +216,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.setItem('nm_theme', theme);
     set({ theme });
   },
+  setError: (error) => set({ error }),
   setSelectedTruck: (id) => set({ selectedTruck: id }),
   setRangePreset: (preset) => set({ rangePreset: preset }),
   setStartDate: (date) => set({ startDate: date }),
@@ -193,9 +225,79 @@ export const useAppStore = create<AppState>((set, get) => ({
   setReportsMonth: (month) => set({ reportsMonth: month }),
   setSearchQuery: (q) => set({ searchQuery: q }),
 
+  // Bulk actions
+  setSelectedTripIds: (ids) => set({ selectedTripIds: ids }),
+  bulkTogglePaid: async (ids, paid) => {
+    const state = get();
+    const originalRows = state.tripRows;
+
+    // Optimistic update
+    set({
+      tripRows: state.tripRows.map(t =>
+        ids.includes(t._id)
+          ? { ...t, paid, payable: paid ? 0 : (t.crewSalary - t.cashAdvance + t.reimbursements) }
+          : t
+      ),
+      selectedTripIds: [],
+    });
+
+    try {
+      await api.patch('/trips/bulk-paid', { ids, paid });
+      await get().fetchDashboard();
+      toast.success(`${ids.length} trip(s) marked as ${paid ? 'paid' : 'unpaid'}`, { duration: 4000 });
+    } catch (err: any) {
+      set({ tripRows: originalRows, selectedTripIds: ids });
+      toast.error(err?.response?.data?.error || 'Failed to update paid status');
+    }
+  },
+  bulkDeleteTrips: async (ids) => {
+    const state = get();
+    const originalRows = state.tripRows;
+
+    // Optimistic removal
+    set({
+      tripRows: state.tripRows.filter(t => !ids.includes(t._id)),
+      selectedTripIds: [],
+    });
+
+    try {
+      await api.delete('/trips/bulk-delete', { data: { ids } });
+      await get().fetchDashboard();
+      toast.success(`${ids.length} trip(s) deleted`, { duration: 4000 });
+    } catch (err: any) {
+      set({ tripRows: originalRows, selectedTripIds: ids });
+      toast.error(err?.response?.data?.error || 'Failed to delete trips');
+    }
+  },
+
+  // Expense categories
+  fetchExpenseCategories: async () => {
+    try {
+      const state = get();
+      const params: Record<string, string> = {};
+      if (state.selectedTruck) params.truck = state.selectedTruck;
+      const { data } = await api.get('/expenses/categories', { params });
+      set({ expenseCategories: data.categories || [] });
+    } catch (err) {
+      console.error('Failed to fetch expense categories:', err);
+    }
+  },
+
+  // Duplicate / last trip
+  getLastTrip: async (truckId) => {
+    try {
+      const { data } = await api.get(`/trips/last?truck=${truckId}`);
+      return data.trip || null;
+    } catch (err) {
+      console.error('Failed to fetch last trip:', err);
+      return null;
+    }
+  },
+
   // Initialize: fetch trucks first, then dashboard
   initApp: async () => {
     if (get().initialized) return;
+    set({ error: null });
     try {
       // Fetch trucks first to get options
       const trucksRes = await api.get('/trucks');
@@ -228,21 +330,23 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ selectedTruck: truckOptions[0]._id });
       }
 
-      set({ initialized: true });
+      set({ initialized: true, error: null });
 
       // Now fetch dashboard data
       await get().fetchDashboard();
       await get().fetchExpenses();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to init app:', err);
-      set({ initialized: true });
+      const msg = err?.response?.data?.error || err?.message || 'Failed to initialize app';
+      set({ initialized: true, error: msg });
+      toast.error(msg);
     }
   },
 
   // Data fetching
   fetchDashboard: async () => {
     const state = get();
-    set({ loading: true });
+    set({ loading: true, error: null });
     try {
       const truckConfig = state.truckOptions.find((t) => t._id === state.selectedTruck);
       const range = getDateRangeForPreset(
@@ -268,13 +372,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         tripRows: data.rows || [],
         kpis: data.kpis || { gross: 0, net: 0, trips: 0, payable: 0, cashOutflow: 0, expenses: 0 },
+        previousKpis: data.previousKpis || { gross: 0, net: 0, trips: 0, payable: 0, cashOutflow: 0, expenses: 0 },
         chartData: data.chartData || [],
         truckOptions: newTruckOptions,
         startDate: range.start,
         endDate: range.end,
+        error: null,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch dashboard:', err);
+      const msg = err?.response?.data?.error || err?.message || 'Failed to load dashboard data';
+      set({ error: msg });
+      toast.error(msg);
     } finally {
       set({ loading: false });
     }
@@ -289,8 +398,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const { data } = await api.get('/expenses', { params });
       set({ expenseRows: data.rows || [] });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch expenses:', err);
+      toast.error(err?.response?.data?.error || 'Failed to load expenses');
     }
   },
 
@@ -317,8 +427,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           dayOff: t.dayOff,
         })),
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch trucks:', err);
+      toast.error(err?.response?.data?.error || 'Failed to load trucks');
     }
   },
 
@@ -331,68 +442,206 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const { data } = await api.get('/dashboard/reports', { params });
       set({ reportRows: data.rows || [] });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch reports:', err);
+      toast.error(err?.response?.data?.error || 'Failed to load reports');
+    }
+  },
+
+  // Quick Edit
+  quickEditTrip: async (id, field, value) => {
+    try {
+      await api.patch(`/trips/${id}/quick-edit`, { field, value });
+      await get().fetchDashboard();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to update field');
+      throw err;
     }
   },
 
   // CRUD - Trips
   addTrip: async (tripData) => {
-    await api.post('/trips', tripData);
-    await get().fetchDashboard();
-    await get().fetchExpenses();
+    try {
+      await api.post('/trips', tripData);
+      toast.success('Trip created successfully', { duration: 4000 });
+      await get().fetchDashboard();
+      await get().fetchExpenses();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to create trip');
+      throw err;
+    }
   },
   updateTrip: async (id, tripData) => {
-    await api.put(`/trips/${id}`, tripData);
-    await get().fetchDashboard();
-    await get().fetchExpenses();
+    try {
+      await api.put(`/trips/${id}`, tripData);
+      toast.success('Trip updated successfully', { duration: 4000 });
+      await get().fetchDashboard();
+      await get().fetchExpenses();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to update trip');
+      throw err;
+    }
   },
   deleteTrip: async (id) => {
-    await api.delete(`/trips/${id}`);
-    await get().fetchDashboard();
+    const state = get();
+    const originalRows = state.tripRows;
+
+    // Optimistic removal
+    set({ tripRows: state.tripRows.filter(t => t._id !== id) });
+
+    try {
+      await api.delete(`/trips/${id}`);
+      await get().fetchDashboard();
+      toast.success('Trip deleted', { duration: 4000 });
+    } catch (err: any) {
+      // Revert on error
+      set({ tripRows: originalRows });
+      toast.error(err?.response?.data?.error || 'Failed to delete trip');
+    }
   },
   toggleTripPaid: async (id) => {
-    await api.patch(`/trips/${id}/toggle-paid`);
-    await get().fetchDashboard();
+    const state = get();
+    const trip = state.tripRows.find(t => t._id === id);
+    if (!trip) return;
+
+    const wasPaid = trip.paid;
+    const originalPayable = trip.payable;
+    const totalPayable = trip.crewSalary - trip.cashAdvance + trip.reimbursements;
+
+    // Optimistic update
+    set({
+      tripRows: state.tripRows.map(t =>
+        t._id === id
+          ? { ...t, paid: !wasPaid, payable: wasPaid ? totalPayable : 0 }
+          : t
+      ),
+    });
+
+    try {
+      await api.patch(`/trips/${id}/toggle-paid`);
+      await get().fetchDashboard();
+
+      toast.success(wasPaid ? 'Marked as unpaid' : 'Marked as paid', {
+        duration: 5000,
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            await api.patch(`/trips/${id}/toggle-paid`);
+            await get().fetchDashboard();
+            toast.success('Undone', { duration: 2000 });
+          },
+        },
+      });
+    } catch (err: any) {
+      // Revert on error
+      set({
+        tripRows: get().tripRows.map(t =>
+          t._id === id
+            ? { ...t, paid: wasPaid, payable: originalPayable }
+            : t
+        ),
+      });
+      toast.error(err?.response?.data?.error || 'Failed to update paid status');
+    }
   },
 
   // CRUD - Expenses
   addExpense: async (expenseData) => {
-    await api.post('/expenses', expenseData);
-    await get().fetchExpenses();
-    await get().fetchDashboard();
+    try {
+      await api.post('/expenses', expenseData);
+      toast.success('Expense saved successfully', { duration: 4000 });
+      await get().fetchExpenses();
+      await get().fetchDashboard();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to save expense');
+      throw err;
+    }
   },
   updateExpense: async (id, expenseData) => {
-    await api.put(`/expenses/${id}`, expenseData);
-    await get().fetchExpenses();
-    await get().fetchDashboard();
+    try {
+      await api.put(`/expenses/${id}`, expenseData);
+      toast.success('Expense updated successfully', { duration: 4000 });
+      await get().fetchExpenses();
+      await get().fetchDashboard();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to update expense');
+      throw err;
+    }
   },
   deleteExpense: async (id) => {
-    await api.delete(`/expenses/${id}`);
-    await get().fetchExpenses();
-    await get().fetchDashboard();
+    const state = get();
+    const originalRows = state.expenseRows;
+
+    // Optimistic removal
+    set({ expenseRows: state.expenseRows.filter(e => e._id !== id) });
+
+    try {
+      await api.delete(`/expenses/${id}`);
+      await get().fetchExpenses();
+      await get().fetchDashboard();
+      toast.success('Expense deleted', { duration: 4000 });
+    } catch (err: any) {
+      // Revert on error
+      set({ expenseRows: originalRows });
+      toast.error(err?.response?.data?.error || 'Failed to delete expense');
+    }
   },
 
   // CRUD - Trucks
   addTruck: async (truckData) => {
-    await api.post('/trucks', truckData);
-    await get().fetchTrucks();
-    await get().fetchDashboard();
+    try {
+      await api.post('/trucks', truckData);
+      toast.success('Truck saved successfully', { duration: 4000 });
+      await get().fetchTrucks();
+      await get().fetchDashboard();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to save truck');
+      throw err;
+    }
   },
   updateTruck: async (id, truckData) => {
-    await api.put(`/trucks/${id}`, truckData);
-    await get().fetchTrucks();
-    await get().fetchDashboard();
+    try {
+      await api.put(`/trucks/${id}`, truckData);
+      toast.success('Truck updated successfully', { duration: 4000 });
+      await get().fetchTrucks();
+      await get().fetchDashboard();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to update truck');
+      throw err;
+    }
   },
   deleteTruck: async (id) => {
-    await api.delete(`/trucks/${id}`);
     const state = get();
-    // If deleted truck was selected, select first available
-    if (state.selectedTruck === id) {
-      const remaining = state.truckOptions.filter((t) => t._id !== id);
-      set({ selectedTruck: remaining.length > 0 ? remaining[0]._id : '' });
+    const originalTruckRows = state.truckRows;
+    const originalTruckOptions = state.truckOptions;
+    const originalSelectedTruck = state.selectedTruck;
+
+    // Optimistic removal
+    const newTruckRows = state.truckRows.filter(t => t._id !== id);
+    const newTruckOptions = state.truckOptions.filter(t => t._id !== id);
+    const newSelectedTruck = state.selectedTruck === id
+      ? (newTruckOptions.length > 0 ? newTruckOptions[0]._id : '')
+      : state.selectedTruck;
+
+    set({
+      truckRows: newTruckRows,
+      truckOptions: newTruckOptions,
+      selectedTruck: newSelectedTruck,
+    });
+
+    try {
+      await api.delete(`/trucks/${id}`);
+      await get().fetchTrucks();
+      await get().fetchDashboard();
+      toast.success('Truck deleted', { duration: 4000 });
+    } catch (err: any) {
+      // Revert on error
+      set({
+        truckRows: originalTruckRows,
+        truckOptions: originalTruckOptions,
+        selectedTruck: originalSelectedTruck,
+      });
+      toast.error(err?.response?.data?.error || 'Failed to delete truck');
     }
-    await get().fetchTrucks();
-    await get().fetchDashboard();
   },
 }));

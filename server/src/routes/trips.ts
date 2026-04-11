@@ -7,8 +7,83 @@ import {
   getExpenseTotalForDate,
   formatTripResponse,
 } from '../services/tripService.js';
+import { validateTripData, validateTripUpdate, sanitizeString } from '../middleware/validate.js';
 
 const router = Router();
+
+// GET /api/trips/last?truck=
+router.get('/last', async (req: Request, res: Response) => {
+  try {
+    const { truck } = req.query;
+    if (!truck) {
+      res.status(400).json({ error: 'Truck required' });
+      return;
+    }
+    const trip = await Trip.findOne({ truck })
+      .populate('truck', 'truckName')
+      .sort({ date: -1, createdAt: -1 });
+    res.json({ trip: trip ? formatTripResponse(trip as any) : null });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/trips/bulk-paid
+router.patch('/bulk-paid', async (req: Request, res: Response) => {
+  try {
+    const { ids, paid } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: 'ids array is required' });
+      return;
+    }
+
+    let updatedCount = 0;
+    for (const id of ids) {
+      const trip = await Trip.findById(id);
+      if (!trip) continue;
+      const totalPayable = trip.crewSalary - trip.cashAdvance + trip.reimbursements;
+      await Trip.findByIdAndUpdate(id, {
+        paid: !!paid,
+        payable: paid ? 0 : totalPayable,
+      });
+      updatedCount++;
+    }
+
+    res.json({ ok: true, count: updatedCount });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/trips/bulk-delete
+router.delete('/bulk-delete', async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: 'ids array is required' });
+      return;
+    }
+
+    // Collect affected truck+date combos for re-sync
+    const affectedDates: { truckId: any; date: Date }[] = [];
+    for (const id of ids) {
+      const trip = await Trip.findById(id);
+      if (trip) {
+        affectedDates.push({ truckId: trip.truck, date: trip.date });
+        await Trip.findByIdAndDelete(id);
+      }
+    }
+
+    // Re-sync expenses for affected dates
+    for (const { truckId, date } of affectedDates) {
+      await syncTripsForDate(truckId as any, date);
+    }
+
+    res.json({ ok: true, count: affectedDates.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/trips?truck=&start=&end=
 router.get('/', async (req: Request, res: Response) => {
@@ -48,7 +123,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // POST /api/trips
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', validateTripData, async (req: Request, res: Response) => {
   try {
     const { truckId, date, status, shipmentNumber, rate, trips, crewSalary, cashAdvance, reimbursements, note } = req.body;
 
@@ -114,7 +189,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT /api/trips/:id
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', validateTripUpdate, async (req: Request, res: Response) => {
   try {
     const { date, status, shipmentNumber, rate, trips, crewSalary, cashAdvance, reimbursements, note } = req.body;
 
@@ -175,6 +250,54 @@ router.delete('/:id', async (req: Request, res: Response) => {
     await syncTripsForDate(truckId as any, tripDate);
 
     res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/trips/:id/quick-edit
+router.patch('/:id/quick-edit', async (req: Request, res: Response) => {
+  try {
+    const { field, value } = req.body;
+    const allowedFields = ['rate', 'trips', 'crewSalary', 'cashAdvance', 'reimbursements', 'note'];
+
+    if (!allowedFields.includes(field)) {
+      res.status(400).json({ error: 'Invalid field' });
+      return;
+    }
+
+    const trip = await Trip.findById(req.params.id).populate('truck', 'dayOff');
+    if (!trip) {
+      res.status(404).json({ error: 'Trip not found' });
+      return;
+    }
+
+    // Update the field
+    (trip as any)[field] = field === 'note' ? value : Number(value) || 0;
+
+    // Recalculate using prepareTripData
+    const updated = prepareTripData({
+      date: trip.date,
+      status: trip.status,
+      dayOff: (trip.truck as any)?.dayOff,
+      shipmentNumber: trip.shipmentNumber,
+      rate: trip.rate,
+      trips: trip.trips,
+      crewSalary: trip.crewSalary,
+      cashAdvance: trip.cashAdvance,
+      reimbursements: trip.reimbursements,
+      note: trip.note,
+      paid: trip.paid,
+      expenses: trip.expenses,
+    });
+
+    await Trip.findByIdAndUpdate(req.params.id, updated);
+
+    // Re-sync expenses for this date
+    await syncTripsForDate(trip.truck as any, trip.date);
+
+    const result = await Trip.findById(req.params.id).populate('truck', 'truckName');
+    res.json(formatTripResponse(result as any));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import Modal from './Modal';
 import { useAppStore, type TripRow } from '../../store/useAppStore';
 import Select from 'react-select';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { ClipboardCopy } from 'lucide-react';
 
 interface TripModalProps {
   open: boolean;
   onClose: () => void;
   editRow?: TripRow | null;
+  duplicateFrom?: TripRow | null;
 }
 
 const STATUS_OPTIONS = [
@@ -123,12 +126,13 @@ function toLocalDateString(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-export default function TripModal({ open, onClose, editRow }: TripModalProps) {
-  const { selectedTruck, truckOptions, addTrip, updateTrip, theme } = useAppStore();
+export default function TripModal({ open, onClose, editRow, duplicateFrom }: TripModalProps) {
+  const { selectedTruck, truckOptions, addTrip, updateTrip, getLastTrip, theme } = useAppStore();
   const isDark = theme === 'dark';
   const styles = isDark ? selectStylesDark : selectStyles;
 
   const [loading, setLoading] = useState(false);
+  const [copyingLast, setCopyingLast] = useState(false);
   const [form, setForm] = useState({
     date: new Date(),
     status: 'Working Day',
@@ -141,19 +145,25 @@ export default function TripModal({ open, onClose, editRow }: TripModalProps) {
     note: '',
   });
 
+  const prefillFromTrip = (src: TripRow, useToday = true) => {
+    setForm({
+      date: useToday ? new Date() : (src.dateIso ? new Date(src.dateIso + 'T00:00:00') : new Date()),
+      status: src.status || 'Working Day',
+      shipmentNumber: src.shipmentNumber || '',
+      rate: String(src.rate || ''),
+      trips: String(src.trips || ''),
+      crewSalary: String(src.crewSalary || ''),
+      cashAdvance: String(src.cashAdvance || ''),
+      reimbursements: String(src.reimbursements || ''),
+      note: src.note || '',
+    });
+  };
+
   useEffect(() => {
     if (editRow) {
-      setForm({
-        date: editRow.dateIso ? new Date(editRow.dateIso + 'T00:00:00') : new Date(),
-        status: editRow.status || 'Working Day',
-        shipmentNumber: editRow.shipmentNumber || '',
-        rate: String(editRow.rate || ''),
-        trips: String(editRow.trips || ''),
-        crewSalary: String(editRow.crewSalary || ''),
-        cashAdvance: String(editRow.cashAdvance || ''),
-        reimbursements: String(editRow.reimbursements || ''),
-        note: editRow.note || '',
-      });
+      prefillFromTrip(editRow, false);
+    } else if (duplicateFrom) {
+      prefillFromTrip(duplicateFrom, true);
     } else {
       setForm({
         date: new Date(),
@@ -167,7 +177,28 @@ export default function TripModal({ open, onClose, editRow }: TripModalProps) {
         note: '',
       });
     }
-  }, [editRow, open]);
+  }, [editRow, duplicateFrom, open]);
+
+  const handleCopyFromLast = async () => {
+    if (!selectedTruck) {
+      toast.error('Please select a truck first!', { duration: 6000 });
+      return;
+    }
+    setCopyingLast(true);
+    try {
+      const lastTrip = await getLastTrip(selectedTruck);
+      if (lastTrip) {
+        prefillFromTrip(lastTrip, true);
+        toast.success('Copied from last trip!', { duration: 3000 });
+      } else {
+        toast.info('No previous trips found for this truck.', { duration: 4000 });
+      }
+    } catch {
+      toast.error('Failed to fetch last trip.', { duration: 5000 });
+    } finally {
+      setCopyingLast(false);
+    }
+  };
 
   const handleRateChange = (val: string) => {
     setForm((f) => {
@@ -181,11 +212,11 @@ export default function TripModal({ open, onClose, editRow }: TripModalProps) {
 
   const handleSubmit = async () => {
     if (!selectedTruck) {
-      alert('Please select a truck first!');
+      toast.error('Please select a truck first!', { duration: 6000 });
       return;
     }
     if (form.status === 'Working Day' && !form.rate) {
-      alert('Rate is required for Working Day.');
+      toast.error('Rate is required for Working Day.', { duration: 6000 });
       return;
     }
 
@@ -211,7 +242,7 @@ export default function TripModal({ open, onClose, editRow }: TripModalProps) {
       }
       onClose();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to save trip');
+      toast.error(err instanceof Error ? err.message : 'Failed to save trip', { duration: 7000 });
     } finally {
       setLoading(false);
     }
@@ -221,11 +252,17 @@ export default function TripModal({ open, onClose, editRow }: TripModalProps) {
   const inputClass =
     'w-full min-h-[44px] rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 px-3.5 text-sm focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-colors';
 
+  const modalTitle = editRow
+    ? `Edit Trip – ${editRow.dateText}`
+    : duplicateFrom
+      ? `Duplicate Trip for ${selectedTruckName}`
+      : `Add Trip for ${selectedTruckName}`;
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={editRow ? `Edit Trip – ${editRow.dateText}` : `Add Trip for ${selectedTruckName}`}
+      title={modalTitle}
       wide
       footer={
         <>
@@ -256,6 +293,17 @@ export default function TripModal({ open, onClose, editRow }: TripModalProps) {
             wrapperClassName="w-full"
             showPopperArrow={false}
           />
+          {!editRow && (
+            <button
+              type="button"
+              onClick={handleCopyFromLast}
+              disabled={copyingLast}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors disabled:opacity-50"
+            >
+              <ClipboardCopy size={14} />
+              {copyingLast ? 'Loading...' : 'Copy from Last Trip'}
+            </button>
+          )}
         </div>
         <div>
           <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">Status</label>

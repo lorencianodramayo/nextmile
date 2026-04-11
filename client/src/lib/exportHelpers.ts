@@ -38,7 +38,7 @@ export function exportPayslip(rows: TripRow[], truckLabel: string, rangeText: st
     d.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 
   const rowHtml = rows
-    .filter((r) => r.status === 'Working Day')
+    .filter((r) => r.status === 'Working Day' && !r.paid)
     .map((r) =>
       `<tr><td>${escHtml(r.dateText)}</td><td>${escHtml(r.shipmentNumber)}</td><td>${r.trips}</td><td>${peso(r.crewSalary)}</td><td>${peso(r.cashAdvance)}</td><td>${peso(r.reimbursements)}</td><td>${peso(r.paid ? 0 : r.payable)}</td></tr>`
     ).join('');

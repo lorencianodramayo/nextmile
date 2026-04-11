@@ -150,7 +150,7 @@ const getStoredTheme = (): 'light' | 'dark' => {
 
 export const useAppStore = create<AppState>((set, get) => ({
   // UI
-  sidebarCollapsed: false,
+  sidebarCollapsed: localStorage.getItem('nm_sidebar') === '1',
   theme: getStoredTheme(),
   loading: false,
   initialized: false,
@@ -175,7 +175,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchQuery: '',
 
   // Actions
-  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  toggleSidebar: () => { const next = !get().sidebarCollapsed; localStorage.setItem('nm_sidebar', next ? '1' : '0'); set({ sidebarCollapsed: next }); },
   toggleTheme: () => {
     const next = get().theme === 'dark' ? 'light' : 'dark';
     localStorage.setItem('nm_theme', next);

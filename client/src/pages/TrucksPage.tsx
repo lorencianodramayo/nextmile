@@ -4,6 +4,42 @@ import KpiCard from '../components/shared/KpiCard';
 import Modal from '../components/shared/Modal';
 import { Truck, CheckCircle2, ArrowUpDown, BarChart3, Plus, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import Select from 'react-select';
+
+const STATUS_OPTIONS = [
+  { value: 'Active', label: '🟢 Active' },
+  { value: 'Inactive', label: '⚪ Inactive' },
+];
+
+const DAY_OPTIONS = [
+  { value: '0', label: 'Sunday' },
+  { value: '1', label: 'Monday' },
+  { value: '2', label: 'Tuesday' },
+  { value: '3', label: 'Wednesday' },
+  { value: '4', label: 'Thursday' },
+  { value: '5', label: 'Friday' },
+  { value: '6', label: 'Saturday' },
+];
+
+const formSelectStyles = {
+  control: (base: Record<string, unknown>, state: { isFocused: boolean }) => ({
+    ...base, minHeight: '44px', borderRadius: '14px',
+    borderColor: state.isFocused ? '#60a5fa' : '#e2e8f0',
+    backgroundColor: 'white', boxShadow: state.isFocused ? '0 0 0 3px rgba(37,99,235,0.1)' : 'none',
+    fontSize: '0.875rem', fontWeight: 500, '&:hover': { borderColor: '#93c5fd' }, cursor: 'pointer',
+  }),
+  menu: (base: Record<string, unknown>) => ({ ...base, borderRadius: '14px', overflow: 'hidden', boxShadow: '0 12px 40px rgba(15,23,42,0.12)', border: '1px solid #e2e8f0', zIndex: 100 }),
+  menuList: (base: Record<string, unknown>) => ({ ...base, padding: '4px' }),
+  option: (base: Record<string, unknown>, state: { isSelected: boolean; isFocused: boolean }) => ({
+    ...base, borderRadius: '10px', padding: '10px 12px', fontSize: '0.875rem',
+    fontWeight: state.isSelected ? 600 : 400,
+    backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#eff6ff' : 'transparent',
+    color: state.isSelected ? 'white' : '#334155', cursor: 'pointer',
+  }),
+  singleValue: (base: Record<string, unknown>) => ({ ...base, color: '#0f172a', fontWeight: 500 }),
+  indicatorSeparator: () => ({ display: 'none' }),
+  dropdownIndicator: (base: Record<string, unknown>) => ({ ...base, color: '#94a3b8' }),
+};
 
 export default function TrucksPage() {
   const { truckRows, truckStats, fetchTrucks, initApp, addTruck, updateTruck, deleteTruck } = useAppStore();
@@ -49,12 +85,6 @@ export default function TrucksPage() {
     } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to save'); }
     finally { setLoading(false); }
   };
-
-  const days = [
-    { value: '0', label: 'Sunday' }, { value: '1', label: 'Monday' }, { value: '2', label: 'Tuesday' },
-    { value: '3', label: 'Wednesday' }, { value: '4', label: 'Thursday' }, { value: '5', label: 'Friday' },
-    { value: '6', label: 'Saturday' },
-  ];
 
   const inputClass = 'w-full min-h-[44px] rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-slate-100 px-3.5 text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 outline-none transition-colors';
 
@@ -137,14 +167,14 @@ export default function TrucksPage() {
         footer={<><button onClick={() => setTruckModal(false)} className="px-4 py-2.5 rounded-[14px] border border-slate-200 dark:border-slate-700 text-sm font-semibold">Cancel</button><button onClick={handleSave} disabled={loading} className="px-6 py-2.5 rounded-[14px] bg-gradient-to-br from-blue-600 to-blue-700 text-white text-sm font-semibold shadow-[0_10px_20px_rgba(37,99,235,0.18)] disabled:opacity-50">{loading ? 'Saving...' : editRow ? 'Update' : 'Save'}</button></>}>
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2"><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 block">Truck Name</label><input type="text" value={form.truckName} onChange={(e) => setForm({ ...form, truckName: e.target.value })} placeholder="e.g. AAA_1234" className={inputClass} /></div>
-          <div><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 block">Status</label><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className={inputClass}><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
+          <div><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">Status</label><Select options={STATUS_OPTIONS} value={STATUS_OPTIONS.find(o => o.value === form.status)} onChange={(opt) => { if (opt) setForm({ ...form, status: opt.value }); }} styles={formSelectStyles} isSearchable={false} menuPortalTarget={document.body} classNamePrefix="nm-select" /></div>
           <div><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 block">Notes</label><input type="text" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional" className={inputClass} /></div>
           <div className="col-span-2"><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2 block">Cutoff Settings</label>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-slate-500 mb-1 block">Cutoff Start</label><select value={form.cutoffStart} onChange={(e) => setForm({ ...form, cutoffStart: e.target.value })} className={inputClass}>{days.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
-              <div><label className="text-xs text-slate-500 mb-1 block">Cutoff End</label><select value={form.cutoffEnd} onChange={(e) => setForm({ ...form, cutoffEnd: e.target.value })} className={inputClass}>{days.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
-              <div><label className="text-xs text-slate-500 mb-1 block">Payday</label><select value={form.payday} onChange={(e) => setForm({ ...form, payday: e.target.value })} className={inputClass}>{days.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
-              <div><label className="text-xs text-slate-500 mb-1 block">Day Off</label><select value={form.dayOff} onChange={(e) => setForm({ ...form, dayOff: e.target.value })} className={inputClass}>{days.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
+              <div><label className="text-xs text-slate-500 mb-1.5 block">Cutoff Start</label><Select options={DAY_OPTIONS} value={DAY_OPTIONS.find(o => o.value === form.cutoffStart)} onChange={(opt) => { if (opt) setForm({ ...form, cutoffStart: opt.value }); }} styles={formSelectStyles} isSearchable={false} menuPortalTarget={document.body} classNamePrefix="nm-select" /></div>
+              <div><label className="text-xs text-slate-500 mb-1.5 block">Cutoff End</label><Select options={DAY_OPTIONS} value={DAY_OPTIONS.find(o => o.value === form.cutoffEnd)} onChange={(opt) => { if (opt) setForm({ ...form, cutoffEnd: opt.value }); }} styles={formSelectStyles} isSearchable={false} menuPortalTarget={document.body} classNamePrefix="nm-select" /></div>
+              <div><label className="text-xs text-slate-500 mb-1.5 block">Payday</label><Select options={DAY_OPTIONS} value={DAY_OPTIONS.find(o => o.value === form.payday)} onChange={(opt) => { if (opt) setForm({ ...form, payday: opt.value }); }} styles={formSelectStyles} isSearchable={false} menuPortalTarget={document.body} classNamePrefix="nm-select" /></div>
+              <div><label className="text-xs text-slate-500 mb-1.5 block">Day Off</label><Select options={DAY_OPTIONS} value={DAY_OPTIONS.find(o => o.value === form.dayOff)} onChange={(opt) => { if (opt) setForm({ ...form, dayOff: opt.value }); }} styles={formSelectStyles} isSearchable={false} menuPortalTarget={document.body} classNamePrefix="nm-select" /></div>
             </div>
           </div>
           <div className="col-span-2 text-xs text-slate-500">Auto-creates a dedicated data sheet per truck.</div>

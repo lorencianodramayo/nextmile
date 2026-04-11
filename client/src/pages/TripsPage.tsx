@@ -65,7 +65,7 @@ export default function TripsPage() {
       </div>
 
       <FilterBar
-        showTruck={false}
+        showTruck={true}
         actions={
           <button onClick={handleAddTrip} className="min-h-[44px] px-4 rounded-[14px] bg-gradient-to-br from-blue-600 to-blue-700 text-white text-sm font-semibold shadow-[0_10px_20px_rgba(37,99,235,0.18)] hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-1.5">
             <Plus size={18} /> Add Trip

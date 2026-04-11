@@ -4,6 +4,8 @@ import FilterBar from '../components/shared/FilterBar';
 import Modal from '../components/shared/Modal';
 import { peso, toInputDate } from '../lib/utils';
 import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import Pagination from '../components/shared/Pagination';
 import { usePagination } from '../hooks/usePagination';
 
@@ -173,7 +175,7 @@ export default function ExpensesPage() {
       <Modal open={expenseModal} onClose={() => setExpenseModal(false)} title={editRow ? 'Edit Expense' : 'Add Expense'} wide
         footer={<><button onClick={() => setExpenseModal(false)} className="px-4 py-2.5 rounded-[14px] border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</button><button onClick={handleSave} disabled={loading} className="px-6 py-2.5 rounded-[14px] bg-gradient-to-br from-blue-600 to-blue-700 text-white text-sm font-semibold shadow-[0_10px_20px_rgba(37,99,235,0.18)] disabled:opacity-50">{loading ? 'Saving...' : editRow ? 'Update' : 'Save'}</button></>}>
         <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2"><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 block">Date</label><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className={inputClass} /></div>
+          <div className="col-span-2"><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">Date</label><DatePicker selected={form.date ? new Date(form.date + 'T00:00:00') : new Date()} onChange={(d: Date | null) => { if (d) setForm({ ...form, date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }); }} dateFormat="MMM d, yyyy" className={inputClass + ' cursor-pointer'} wrapperClassName="w-full" showPopperArrow={false} /></div>
           <div><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 block">Category</label><input type="text" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputClass} /></div>
           <div><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 block">Amount</label><input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className={inputClass} /></div>
           <div className="col-span-2"><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1 block">Description</label><input type="text" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputClass} /></div>

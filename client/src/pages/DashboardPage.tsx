@@ -20,7 +20,7 @@ import ExpenseBreakdownModal from '../components/shared/ExpenseBreakdownModal';
 export default function DashboardPage() {
   const {
     tripRows, kpis, chartData, loading, selectedTruck, truckOptions,
-    initApp, deleteTrip, toggleTripPaid, searchQuery, setSearchQuery, startDate, endDate,
+    initApp, deleteTrip, toggleTripPaid, searchQuery, setSearchQuery, startDate, endDate, rangePreset,
   } = useAppStore();
 
   const [tripModal, setTripModal] = useState(false);
@@ -34,6 +34,8 @@ export default function DashboardPage() {
   }, []);
 
   const selectedTruckName = truckOptions.find((t) => t._id === selectedTruck)?.truckName;
+  const rangeLabels: Record<string, string> = { ALL: 'Selected', CC: "Current Cutoff's", LC: "Last Cutoff's", TM: "This Month's", LM: "Last Month's", MTD: "MTD", YTD: "YTD", '7': "Last 7 Days'", '14': "Last 14 Days'", '30': "Last 30 Days'", CUSTOM: "Custom" };
+  const kpiPrefix = rangeLabels[rangePreset] || 'Selected';
   const pageTitle = selectedTruckName ? `${selectedTruckName} Overview` : 'Overview';
 
   const filteredRows = useMemo(() => {
@@ -106,11 +108,11 @@ export default function DashboardPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-3">
-        <KpiCard label="Gross" value={pesoCompact(kpis.gross)} subtitle="Total gross income" icon={<DollarSign size={22} />} colorClass="bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400" />
-        <KpiCard label="Net" value={pesoCompact(kpis.net)} subtitle="After salary and expenses" icon={<CheckCircle2 size={22} />} colorClass="bg-teal-500/10 text-teal-500 dark:bg-teal-500/15 dark:text-teal-400" />
-        <KpiCard label="Trips" value={kpis.trips.toLocaleString()} subtitle="Trip count summary" icon={<TruckIcon size={22} />} colorClass="bg-amber-500/10 text-amber-500 dark:bg-amber-500/15 dark:text-amber-400" />
-        <KpiCard label="Payable" value={pesoCompact(kpis.payable)} subtitle="Crew payable total" icon={<BarChart3 size={22} />} colorClass="bg-cyan-500/10 text-cyan-500 dark:bg-cyan-500/15 dark:text-cyan-400" />
-        <KpiCard label="Cash Outflow" value={pesoCompact(kpis.cashOutflow)} subtitle="Actual cash paid to crew" icon={<ArrowUpDown size={22} />} colorClass="bg-pink-500/10 text-pink-500 dark:bg-pink-500/15 dark:text-pink-400" />
+        <KpiCard label={`${kpiPrefix} Gross`} value={pesoCompact(kpis.gross)} subtitle="Total gross income" icon={<DollarSign size={22} />} colorClass="bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400" />
+        <KpiCard label={`${kpiPrefix} Net`} value={pesoCompact(kpis.net)} subtitle="After salary and expenses" icon={<CheckCircle2 size={22} />} colorClass="bg-teal-500/10 text-teal-500 dark:bg-teal-500/15 dark:text-teal-400" />
+        <KpiCard label={`${kpiPrefix} Trips`} value={kpis.trips.toLocaleString()} subtitle="Trip count summary" icon={<TruckIcon size={22} />} colorClass="bg-amber-500/10 text-amber-500 dark:bg-amber-500/15 dark:text-amber-400" />
+        <KpiCard label={`${kpiPrefix} Payable`} value={pesoCompact(kpis.payable)} subtitle="Crew payable total" icon={<BarChart3 size={22} />} colorClass="bg-cyan-500/10 text-cyan-500 dark:bg-cyan-500/15 dark:text-cyan-400" />
+        <KpiCard label={`${kpiPrefix} Cash Outflow`} value={pesoCompact(kpis.cashOutflow)} subtitle="Actual cash paid to crew" icon={<ArrowUpDown size={22} />} colorClass="bg-pink-500/10 text-pink-500 dark:bg-pink-500/15 dark:text-pink-400" />
       </div>
 
       {/* Charts */}

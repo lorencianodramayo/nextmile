@@ -6,6 +6,7 @@ export interface IExpense extends Document {
   category: string;
   amount: number;
   description: string;
+  reimbursed: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +38,10 @@ const ExpenseSchema = new Schema<IExpense>(
       type: String,
       default: '',
       trim: true,
+    },
+    reimbursed: {
+      type: Boolean,
+      default: false,
     },
   },
   {

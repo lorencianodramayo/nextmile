@@ -5,7 +5,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import FilterBar from '../components/shared/FilterBar';
 import Modal from '../components/shared/Modal';
 import { peso, toInputDate } from '../lib/utils';
-import { Plus, Pencil, Trash2, AlertTriangle, Coins } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle, Coins, Check } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Pagination from '../components/shared/Pagination';
@@ -17,7 +17,7 @@ import EmptyState from '../components/shared/EmptyState';
 const DEFAULT_CATEGORIES = ['Fuel', 'Maintenance', 'Tires', 'Toll', 'Parking', 'Meals', 'Parts', 'Insurance', 'Registration'];
 
 export default function ExpensesPage() {
-  const { expenseRows, selectedTruck, truckOptions, expensesMonth, setExpensesMonth, fetchExpenses, initApp, addExpense, updateExpense, deleteExpense, expenseCategories, fetchExpenseCategories, theme } = useAppStore();
+  const { expenseRows, selectedTruck, truckOptions, expensesMonth, setExpensesMonth, fetchExpenses, initApp, addExpense, updateExpense, deleteExpense, toggleExpenseReimbursed, expenseCategories, fetchExpenseCategories, theme } = useAppStore();
   const [expenseModal, setExpenseModal] = useState(false);
   const [editRow, setEditRow] = useState<ExpenseRow | null>(null);
   const [deleteModal, setDeleteModal] = useState<ExpenseRow | null>(null);
@@ -127,14 +127,14 @@ export default function ExpensesPage() {
             <table className="w-full border-separate border-spacing-0">
               <thead>
                 <tr>
-                  {['Date', 'Category', 'Amount', 'Description', 'Actions'].map((h) => (
+                  {['Date', 'Category', 'Amount', 'Description', 'Reimbursed', 'Actions'].map((h) => (
                     <th key={h} className="sticky top-0 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 px-3 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.length === 0 ? (
-                  <tr><td colSpan={5}>
+                  <tr><td colSpan={6}>
                     <EmptyState
                       icon={Coins}
                       title="No expenses found"
@@ -155,8 +155,25 @@ export default function ExpensesPage() {
                     <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
                       <span className="inline-block px-2.5 py-1 rounded-full text-[0.72rem] font-bold bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">{r.category}</span>
                     </td>
-                    <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 text-red-500 font-semibold">{peso(r.amount)}</td>
+                    <td className={`text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 font-semibold ${r.reimbursed ? 'text-green-500 line-through' : 'text-red-500'}`}>{peso(r.amount)}</td>
                     <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">{r.description}</td>
+                    <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                      {r.category.toUpperCase() === 'PARKING' ? (
+                        <button
+                          onClick={() => toggleExpenseReimbursed(r._id)}
+                          className={`w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border transition-all ${
+                            r.reimbursed
+                              ? 'bg-green-500/10 border-green-500/25 text-green-500 hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-500'
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-green-500/10 hover:border-green-500/25 hover:text-green-500'
+                          }`}
+                          title={r.reimbursed ? 'Mark as not reimbursed' : 'Mark as reimbursed by client'}
+                        >
+                          <Check size={14} />
+                        </button>
+                      ) : (
+                        <span className="text-slate-300 dark:text-slate-600">—</span>
+                      )}
+                    </td>
                     <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => openEdit(r)} className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-600 transition-all"><Pencil size={14} /></button>
@@ -190,14 +207,31 @@ export default function ExpensesPage() {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <div className="font-bold text-sm">{r.dateText}</div>
-                    <span className="inline-block mt-1 px-2.5 py-1 rounded-full text-[0.72rem] font-bold bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">{r.category}</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="inline-block px-2.5 py-1 rounded-full text-[0.72rem] font-bold bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">{r.category}</span>
+                      {r.reimbursed && (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[0.65rem] font-bold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">Reimbursed</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-red-500 font-bold text-lg">{peso(r.amount)}</div>
+                  <div className={`font-bold text-lg ${r.reimbursed ? 'text-green-500 line-through' : 'text-red-500'}`}>{peso(r.amount)}</div>
                 </div>
                 {r.description && (
                   <div className="text-xs text-slate-500 mb-3">{r.description}</div>
                 )}
                 <div className="flex gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                  {r.category.toUpperCase() === 'PARKING' && (
+                    <button
+                      onClick={() => toggleExpenseReimbursed(r._id)}
+                      className={`h-9 px-3 rounded-xl inline-flex items-center justify-center gap-1.5 border text-xs font-semibold transition-all ${
+                        r.reimbursed
+                          ? 'bg-green-500/10 border-green-500/25 text-green-500'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600'
+                      }`}
+                    >
+                      <Check size={14} /> {r.reimbursed ? 'Reimbursed' : 'Reimburse'}
+                    </button>
+                  )}
                   <button onClick={() => openEdit(r)} className="flex-1 h-9 rounded-xl inline-flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:text-blue-600 transition-all text-xs font-semibold">
                     <Pencil size={14} /> Edit
                   </button>
@@ -246,7 +280,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Expense Modal */}
-      <Modal open={expenseModal} onClose={() => setExpenseModal(false)} title={editRow ? 'Edit Expense' : 'Add Expense'} wide
+      <Modal open={expenseModal} onClose={() => setExpenseModal(false)} title={editRow ? `Edit Expense - ${selectedTruckName || 'Truck'} - ${editRow.dateText}` : 'Add Expense'} wide
         footer={<><button onClick={() => setExpenseModal(false)} className="px-4 py-2.5 rounded-[14px] border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</button><button onClick={handleSave} disabled={loading} className="px-6 py-2.5 rounded-[14px] bg-gradient-to-br from-blue-600 to-blue-700 text-white text-sm font-semibold shadow-[0_10px_20px_rgba(37,99,235,0.18)] disabled:opacity-50">{loading ? 'Saving...' : editRow ? 'Update' : 'Save'}</button></>}>
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2"><label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">Date</label><DatePicker selected={form.date ? new Date(form.date + 'T00:00:00') : new Date()} onChange={(d: Date | null) => { if (d) setForm({ ...form, date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }); }} dateFormat="MMM d, yyyy" className={inputClass + ' cursor-pointer'} wrapperClassName="w-full" showPopperArrow={false} /></div>

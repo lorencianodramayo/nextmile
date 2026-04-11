@@ -1,6 +1,7 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import {
   LayoutDashboard,
   Route,
@@ -12,21 +13,36 @@ import {
   Sun,
   Moon,
   X,
+  Users,
+  CreditCard,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/trips', icon: Route, label: 'Trips' },
-  { to: '/expenses', icon: HandCoins, label: 'Expenses' },
-  { to: '/reports', icon: BarChart3, label: 'Reports' },
-  { to: '/trucks', icon: Truck, label: 'Trucks' },
+const allNavItems = [
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard', adminOnly: true },
+  { to: '/trips', icon: Route, label: 'Trips', adminOnly: false },
+  { to: '/expenses', icon: HandCoins, label: 'Expenses', adminOnly: true },
+  { to: '/reports', icon: BarChart3, label: 'Reports', adminOnly: true },
+  { to: '/payments', icon: CreditCard, label: 'Payments', adminOnly: true },
+  { to: '/trucks', icon: Truck, label: 'Trucks', adminOnly: true },
+  { to: '/users', icon: Users, label: 'Users', adminOnly: true },
 ];
 
 export default function Sidebar() {
   const { sidebarCollapsed, toggleSidebar, theme, toggleTheme } = useAppStore();
+  const { user, logout, isAdmin } = useAuthStore();
   const location = useLocation();
+  const navigate = useNavigate();
   const isOpen = !sidebarCollapsed;
+
+  const admin = isAdmin();
+  const navItems = admin ? allNavItems : allNavItems.filter((item) => !item.adminOnly);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <aside
@@ -127,14 +143,36 @@ export default function Sidebar() {
           {isOpen && <span className="text-xs font-medium">{theme === 'dark' ? 'Dark' : 'Light'} Mode</span>}
         </button>
 
-        {isOpen && (
-          <>
-            <div className="text-sm font-bold text-slate-900 dark:text-slate-100">ROBIN SANTOS</div>
-            <div className="text-[0.65rem] text-slate-400 mt-0.5 flex items-center">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 shadow-[0_0_4px_rgba(34,197,94,0.8)] live-dot" />
-              Live Data Connected
+        {isOpen && user && (
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{user.displayName}</div>
+              <div className="text-[0.65rem] text-slate-400 mt-0.5 flex items-center">
+                <span className={cn(
+                  'inline-block w-1.5 h-1.5 rounded-full mr-1.5 shadow-sm',
+                  admin ? 'bg-purple-500' : 'bg-green-500'
+                )} />
+                {admin ? 'Admin' : 'Employee'}
+              </div>
             </div>
-          </>
+            <button
+              onClick={handleLogout}
+              className="w-8 h-8 rounded-lg grid place-items-center text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+              title="Sign out"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        )}
+
+        {sidebarCollapsed && (
+          <button
+            onClick={handleLogout}
+            className="w-9 h-9 rounded-lg grid place-items-center text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+            title="Sign out"
+          >
+            <LogOut size={16} />
+          </button>
         )}
       </div>
     </aside>

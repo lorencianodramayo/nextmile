@@ -97,6 +97,7 @@ router.get('/', async (req: Request, res: Response) => {
       category: e.category,
       amount: e.amount,
       description: e.description,
+      reimbursed: e.reimbursed || false,
     }));
 
     res.json({ rows });
@@ -182,6 +183,27 @@ router.put('/:id', validateExpenseUpdate, async (req: Request, res: Response) =>
 
     const updated = await Expense.findById(req.params.id);
     res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/expenses/:id/toggle-reimbursed
+router.patch('/:id/toggle-reimbursed', async (req: Request, res: Response) => {
+  try {
+    const expense = await Expense.findById(req.params.id);
+    if (!expense) {
+      res.status(404).json({ error: 'Expense not found.' });
+      return;
+    }
+
+    const newReimbursed = !expense.reimbursed;
+    await Expense.findByIdAndUpdate(req.params.id, { reimbursed: newReimbursed });
+
+    // Re-sync trips for this date to update NET
+    await syncTripsForDate(expense.truck as any, expense.date);
+
+    res.json({ ok: true, reimbursed: newReimbursed });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -9,6 +9,10 @@ import truckRoutes from './routes/trucks.js';
 import tripRoutes from './routes/trips.js';
 import expenseRoutes from './routes/expenses.js';
 import dashboardRoutes from './routes/dashboard.js';
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
+import paymentRoutes from './routes/payments.js';
+import { requireAuth, requireAdmin } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,11 +25,17 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-// API Routes
-app.use('/api/trucks', truckRoutes);
-app.use('/api/trips', tripRoutes);
-app.use('/api/expenses', expenseRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+// Public routes (no auth required)
+app.use('/api/auth', authRoutes);
+
+// Protected routes (require authentication)
+// Trucks: GET is for all users (employees need truck list for trip form), POST/PUT/DELETE are admin-protected inside the route
+app.use('/api/trucks', requireAuth, truckRoutes);
+app.use('/api/trips', requireAuth, tripRoutes);
+app.use('/api/expenses', requireAuth, requireAdmin, expenseRoutes);
+app.use('/api/dashboard', requireAuth, dashboardRoutes);
+app.use('/api/users', userRoutes); // already has its own auth middleware
+app.use('/api/payments', paymentRoutes); // already has its own auth middleware
 
 // Health check
 app.get('/api/health', (_req, res) => {

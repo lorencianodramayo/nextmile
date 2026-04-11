@@ -219,6 +219,10 @@ export default function TripModal({ open, onClose, editRow, duplicateFrom }: Tri
       toast.error('Rate is required for Working Day.', { duration: 6000 });
       return;
     }
+    if (form.status === 'Working Day' && !form.crewSalary) {
+      toast.error('Crew Salary is required for Working Day.', { duration: 6000 });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -253,10 +257,12 @@ export default function TripModal({ open, onClose, editRow, duplicateFrom }: Tri
     'w-full min-h-[44px] rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 px-3.5 text-sm focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-colors';
 
   const modalTitle = editRow
-    ? `Edit Trip – ${editRow.dateText}`
+    ? `Edit Trip - ${selectedTruckName} - ${editRow.dateText}`
     : duplicateFrom
       ? `Duplicate Trip for ${selectedTruckName}`
       : `Add Trip for ${selectedTruckName}`;
+
+  const isWorkingDay = form.status === 'Working Day';
 
   return (
     <Modal
@@ -322,7 +328,9 @@ export default function TripModal({ open, onClose, editRow, duplicateFrom }: Tri
           <input type="text" value={form.shipmentNumber} onChange={(e) => setForm({ ...form, shipmentNumber: e.target.value })} placeholder="e.g. SHP-0410-123" className={inputClass} />
         </div>
         <div>
-          <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">Rate (₱)</label>
+          <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">
+            Rate (₱){isWorkingDay && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
           <input type="number" value={form.rate} onChange={(e) => handleRateChange(e.target.value)} placeholder="0" className={inputClass} />
         </div>
         <div>
@@ -330,7 +338,9 @@ export default function TripModal({ open, onClose, editRow, duplicateFrom }: Tri
           <input type="number" value={form.trips} onChange={(e) => setForm({ ...form, trips: e.target.value })} placeholder="1" className={inputClass} />
         </div>
         <div>
-          <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">Crew Salary (₱)</label>
+          <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block">
+            Crew Salary (₱){isWorkingDay && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
           <input type="number" value={form.crewSalary} onChange={(e) => setForm({ ...form, crewSalary: e.target.value })} placeholder="0" className={inputClass} />
         </div>
         <div>

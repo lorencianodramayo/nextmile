@@ -31,6 +31,8 @@ export interface TripTableProps {
   onSort?: (field: string) => void;
   /** Custom empty state content */
   emptyState?: ReactNode;
+  /** Show truck name column (when All Trucks selected) */
+  showTruckColumn?: boolean;
 }
 
 // Map header labels to sortable field keys
@@ -44,8 +46,16 @@ const SORTABLE_FIELDS: Record<string, string> = {
   'Payable': 'payable',
 };
 
-const HEADERS_WITH_ACTIONS = ['Week', 'Date', 'Status', 'Shipment #', 'Rate', 'Trips', 'Crew Salary', 'Cash Adv.', 'Reimb.', 'Expenses', 'Note', 'Gross', 'Net', 'Payable', 'Action'];
-const HEADERS_NO_ACTIONS = ['Week', 'Date', 'Status', 'Shipment #', 'Rate', 'Trips', 'Crew Salary', 'Cash Adv.', 'Reimb.', 'Expenses', 'Note', 'Gross', 'Net', 'Payable'];
+const BASE_HEADERS_WITH_ACTIONS = ['Week', 'Date', 'Status', 'Shipment #', 'Rate', 'Trips', 'Crew Salary', 'Cash Adv.', 'Reimb.', 'Expenses', 'Note', 'Gross', 'Net', 'Payable', 'Action'];
+const BASE_HEADERS_NO_ACTIONS = ['Week', 'Date', 'Status', 'Shipment #', 'Rate', 'Trips', 'Crew Salary', 'Cash Adv.', 'Reimb.', 'Expenses', 'Note', 'Gross', 'Net', 'Payable'];
+
+function buildHeaders(base: string[], showTruck: boolean): string[] {
+  if (!showTruck) return base;
+  const dateIdx = base.indexOf('Date');
+  const result = [...base];
+  result.splice(dateIdx + 1, 0, 'Truck');
+  return result;
+}
 
 function statusBadge(status: string) {
   const s = status.toUpperCase();
@@ -223,6 +233,7 @@ function TripCard({
   selectable,
   selected,
   onSelectToggle,
+  showTruckColumn,
 }: {
   r: TripRow;
   showActions: boolean;
@@ -236,6 +247,7 @@ function TripCard({
   selectable?: boolean;
   selected?: boolean;
   onSelectToggle?: (id: string) => void;
+  showTruckColumn?: boolean;
 }) {
   const netValue = reportMode ? (r.reportNetIncome ?? r.netIncome) : r.netIncome;
   const payableValue = reportMode ? (r.reportPayable ?? r.payable) : r.payable;
@@ -258,6 +270,9 @@ function TripCard({
           )}
           <div>
             <div className="font-bold text-sm">{r.dateText}</div>
+            {showTruckColumn && r.truckName && (
+              <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">{r.truckName}</div>
+            )}
             <div className="text-xs text-slate-500">{r.week}</div>
           </div>
         </div>
@@ -400,8 +415,10 @@ export default function TripTable({
   sortDirection,
   onSort,
   emptyState,
+  showTruckColumn = false,
 }: TripTableProps) {
-  const headers = showActions ? HEADERS_WITH_ACTIONS : HEADERS_NO_ACTIONS;
+  const baseHeaders = showActions ? BASE_HEADERS_WITH_ACTIONS : BASE_HEADERS_NO_ACTIONS;
+  const headers = buildHeaders(baseHeaders, showTruckColumn);
   const colCount = headers.length + (selectable ? 1 : 0);
 
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.includes(r._id));
@@ -517,6 +534,12 @@ export default function TripTable({
                   <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
                     {r.dateText}
                   </td>
+                  {/* Truck (conditional) */}
+                  {showTruckColumn && (
+                    <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap font-semibold text-blue-600 dark:text-blue-400">
+                      {r.truckName || '—'}
+                    </td>
+                  )}
                   {/* Status */}
                   <td className="text-center text-xs px-2.5 py-2.5 border-b border-slate-100 dark:border-slate-800">
                     <span className={cn('inline-block px-3 py-1.5 rounded-full text-xs font-bold border', statusBadge(r.status))}>
@@ -725,6 +748,7 @@ export default function TripTable({
               selectable={selectable}
               selected={selectedIds.includes(r._id)}
               onSelectToggle={handleSelectRow}
+              showTruckColumn={showTruckColumn}
             />
           ))
         )}

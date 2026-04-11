@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useAppStore, type TripRow } from '../store/useAppStore';
+import { useAuthStore } from '../store/useAuthStore';
 import FilterBar from '../components/shared/FilterBar';
 import TripModal from '../components/shared/TripModal';
 import TripTable from '../components/shared/TripTable';
@@ -16,9 +17,11 @@ import EmptyState from '../components/shared/EmptyState';
 export default function TripsPage() {
   const {
     tripRows, loading, selectedTruck, truckOptions, initApp, deleteTrip, toggleTripPaid,
-    searchQuery, setSearchQuery, startDate, endDate,
+    searchQuery, setSearchQuery, startDate, endDate, rangePreset,
     selectedTripIds, setSelectedTripIds, bulkTogglePaid, bulkDeleteTrips, quickEditTrip,
   } = useAppStore();
+  const { isAdmin, user } = useAuthStore();
+  const admin = isAdmin();
 
   const [tripModal, setTripModal] = useState(false);
   const [editRow, setEditRow] = useState<TripRow | null>(null);
@@ -79,10 +82,33 @@ export default function TripsPage() {
     setTripModal(true);
   };
 
-  const handleExportCsv = () => exportTripsCsv(filteredRows);
+  // Build a human-readable range label for exports
+  const getRangeLabel = useCallback((): string => {
+    const RANGE_LABELS: Record<string, string> = {
+      ALL: 'All Time', CC: 'Current Cutoff', LC: 'Last Cutoff',
+      TM: 'This Month', LM: 'Last Month', MTD: 'Month to Date',
+      YTD: 'Year to Date', '7': 'Last 7 Days', '14': 'Last 14 Days',
+      '30': 'Last 30 Days', CUSTOM: 'Custom Range',
+    };
+    const label = RANGE_LABELS[rangePreset] || 'All Time';
+    if (startDate && endDate) {
+      const fmtStart = new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const fmtEnd = new Date(endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return `${label} (${fmtStart} – ${fmtEnd})`;
+    }
+    return label;
+  }, [rangePreset, startDate, endDate]);
+
+  const handleExportCsv = () => {
+    const truckLabel = truckOptions.find((t) => t._id === selectedTruck)?.truckName || 'All Trucks';
+    const rangeLabel = getRangeLabel();
+    const filename = `NEXTMILE_${truckLabel.replace(/\s+/g, '_')}_${rangeLabel.replace(/[^a-zA-Z0-9-]/g, '_')}.csv`;
+    exportTripsCsv(filteredRows, filename);
+  };
   const handleExportPayslip = () => {
     const truckLabel = truckOptions.find((t) => t._id === selectedTruck)?.truckName || "All Trucks";
-    exportPayslip(filteredRows, truckLabel, startDate && endDate ? `${startDate} to ${endDate}` : "All Dates");
+    const rangeLabel = getRangeLabel();
+    exportPayslip(filteredRows, truckLabel, rangeLabel);
   };
 
   const handleBulkDelete = async () => {
@@ -118,7 +144,7 @@ export default function TripsPage() {
         <div className="flex flex-col gap-3 mb-3">
           <div>
             <h2 className="text-base font-bold tracking-tight">Trip Records</h2>
-            <p className="text-sm text-slate-500">Filter, edit, export, and generate payslips.</p>
+            <p className="text-sm text-slate-500">{admin ? 'Filter, edit, export, and generate payslips.' : 'View trips and add new entries.'}</p>
           </div>
           <div className="flex gap-2 flex-wrap items-center">
             <div className="flex-grow min-w-[240px] relative">
@@ -126,12 +152,16 @@ export default function TripsPage() {
               <input ref={searchInputRef} type="text" placeholder="Search Shipment Number... ( / )" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full min-h-[44px] rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm pl-9 pr-3.5 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 outline-none transition-colors" />
             </div>
-            <button onClick={handleExportCsv} className="min-h-[44px] px-3 rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors flex items-center gap-1.5">
-              <Download size={16} /> CSV
-            </button>
-            <button onClick={handleExportPayslip} className="min-h-[44px] px-3 rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors flex items-center gap-1.5">
-              <FileText size={16} /> Payslip
-            </button>
+            {admin && (
+              <>
+                <button onClick={handleExportCsv} className="min-h-[44px] px-3 rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors flex items-center gap-1.5">
+                  <Download size={16} /> CSV
+                </button>
+                <button onClick={handleExportPayslip} className="min-h-[44px] px-3 rounded-[14px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors flex items-center gap-1.5">
+                  <FileText size={16} /> Payslip
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -139,16 +169,25 @@ export default function TripsPage() {
           rows={paginatedRows}
           loading={loading}
           showActions
-          selectable
-          selectedIds={selectedTripIds}
-          onSelectionChange={setSelectedTripIds}
-          onTogglePaid={(id) => toggleTripPaid(id)}
-          onEdit={(r) => { setEditRow(r); setDuplicateFrom(null); setTripModal(true); }}
-          onDelete={(r) => setDeleteModal(r)}
-          onDuplicate={handleDuplicate}
-          onExpenseClick={(data) => setExpenseBreakdown(data)}
+          selectable={admin}
+          selectedIds={admin ? selectedTripIds : []}
+          onSelectionChange={admin ? setSelectedTripIds : undefined}
+          onTogglePaid={admin ? (id) => toggleTripPaid(id) : undefined}
+          onEdit={(r) => {
+            // Admin can edit any, employee can edit own unpaid
+            if (!admin && (r.paid || r.createdBy !== user?._id)) return;
+            setEditRow(r); setDuplicateFrom(null); setTripModal(true);
+          }}
+          onDelete={(r) => {
+            // Admin can delete any, employee can delete own unpaid
+            if (!admin && (r.paid || r.createdBy !== user?._id)) return;
+            setDeleteModal(r);
+          }}
+          onDuplicate={admin ? handleDuplicate : undefined}
+          onExpenseClick={admin ? (data) => setExpenseBreakdown(data) : undefined}
           selectedTruck={selectedTruck}
-          onQuickEdit={quickEditTrip}
+          showTruckColumn={!selectedTruck}
+          onQuickEdit={admin ? quickEditTrip : undefined}
           sortable
           sortField={sortField}
           sortDirection={sortDirection}
@@ -173,9 +212,9 @@ export default function TripsPage() {
         <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} pageSize={pageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
       </div>
 
-      {/* Floating Bulk Action Bar */}
+      {/* Floating Bulk Action Bar (admin only) */}
       <AnimatePresence>
-        {selectedTripIds.length > 0 && (
+        {admin && selectedTripIds.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}

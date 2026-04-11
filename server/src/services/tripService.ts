@@ -28,12 +28,14 @@ export async function getExpenseTotalForDate(
     date: { $gte: startOfDay, $lte: endOfDay },
   });
 
-  const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+  // Exclude reimbursed expenses from the total (client pays for those)
+  const total = expenses.reduce((sum, e) => sum + (e.reimbursed ? 0 : e.amount), 0);
   const notes = expenses
     .map((e) => {
       const parts = [];
       if (e.category) parts.push(e.category);
       if (e.description) parts.push(e.description);
+      if (e.reimbursed) parts.push('(Reimbursed)');
       return parts.join(': ');
     })
     .filter(Boolean);
@@ -154,6 +156,7 @@ export function formatTripResponse(trip: ITrip & { truck?: any }) {
     _id: trip._id,
     truck: trip.truck,
     truckName: trip.truck?.truckName || '',
+    createdBy: trip.createdBy ? String(trip.createdBy) : null,
     date: trip.date,
     dateIso: toISODateString(date),
     dateText: formatDateText(date),

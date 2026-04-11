@@ -78,6 +78,7 @@ export default function ReportsPage() {
           loading={false}
           showActions={false}
           reportMode
+          showTruckColumn={!selectedTruck}
           sortable
           sortField={sortField}
           sortDirection={sortDirection}

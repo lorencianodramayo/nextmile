@@ -26,6 +26,7 @@ export interface TripRow {
   _id: string;
   truck: string | { _id: string; truckName: string };
   truckName: string;
+  createdBy?: string | null;
   date: string;
   dateIso: string;
   dateText: string;
@@ -58,6 +59,7 @@ export interface ExpenseRow {
   category: string;
   amount: number;
   description: string;
+  reimbursed: boolean;
 }
 
 export interface TruckRow {
@@ -166,6 +168,7 @@ interface AppState {
   addExpense: (data: Record<string, unknown>) => Promise<void>;
   updateExpense: (id: string, data: Record<string, unknown>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
+  toggleExpenseReimbursed: (id: string) => Promise<void>;
   addTruck: (data: Record<string, unknown>) => Promise<void>;
   updateTruck: (id: string, data: Record<string, unknown>) => Promise<void>;
   deleteTruck: (id: string) => Promise<void>;
@@ -344,7 +347,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       // Now fetch dashboard data
       await get().fetchDashboard();
-      await get().fetchExpenses();
+      // Only fetch expenses for admin (employees get 403)
+      try { await get().fetchExpenses(); } catch { /* employees can't access */ }
     } catch (err: unknown) {
       console.error('Failed to init app:', err);
       const msg = getErrorMessage(err, 'Failed to initialize app');
@@ -594,6 +598,30 @@ export const useAppStore = create<AppState>((set, get) => ({
       // Revert on error
       set({ expenseRows: originalRows });
       toast.error(getErrorMessage(err, 'Failed to delete expense'));
+    }
+  },
+
+  // Toggle expense reimbursed
+  toggleExpenseReimbursed: async (id) => {
+    const state = get();
+    const originalRows = state.expenseRows;
+
+    // Optimistic toggle
+    set({
+      expenseRows: state.expenseRows.map(e =>
+        e._id === id ? { ...e, reimbursed: !e.reimbursed } : e
+      ),
+    });
+
+    try {
+      await api.patch(`/expenses/${id}/toggle-reimbursed`);
+      await get().fetchExpenses();
+      await get().fetchDashboard();
+      const expense = originalRows.find(e => e._id === id);
+      toast.success(expense?.reimbursed ? 'Marked as not reimbursed' : 'Marked as reimbursed', { duration: 3000 });
+    } catch (err: unknown) {
+      set({ expenseRows: originalRows });
+      toast.error(getErrorMessage(err, 'Failed to toggle reimbursed'));
     }
   },
 

@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface ITrip extends Document {
   truck: Types.ObjectId;
+  createdBy?: Types.ObjectId;
   date: Date;
   week: string;
   status: 'Working Day' | 'Day Off' | 'Holiday';
@@ -28,6 +29,11 @@ const TripSchema = new Schema<ITrip>(
       ref: 'Truck',
       required: true,
       index: true,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
     },
     date: {
       type: Date,

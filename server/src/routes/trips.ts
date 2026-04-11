@@ -8,6 +8,7 @@ import {
   formatTripResponse,
 } from '../services/tripService.js';
 import { validateTripData, validateTripUpdate, sanitizeString } from '../middleware/validate.js';
+import { requireAdmin, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -28,8 +29,8 @@ router.get('/last', async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/trips/bulk-paid
-router.patch('/bulk-paid', async (req: Request, res: Response) => {
+// PATCH /api/trips/bulk-paid (admin only)
+router.patch('/bulk-paid', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { ids, paid } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
@@ -55,8 +56,8 @@ router.patch('/bulk-paid', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/trips/bulk-delete
-router.delete('/bulk-delete', async (req: Request, res: Response) => {
+// DELETE /api/trips/bulk-delete (admin only)
+router.delete('/bulk-delete', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { ids } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
@@ -123,7 +124,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // POST /api/trips
-router.post('/', validateTripData, async (req: Request, res: Response) => {
+router.post('/', validateTripData, async (req: AuthRequest, res: Response) => {
   try {
     const { truckId, date, status, shipmentNumber, rate, trips, crewSalary, cashAdvance, reimbursements, note } = req.body;
 
@@ -140,6 +141,15 @@ router.post('/', validateTripData, async (req: Request, res: Response) => {
 
     if (!date) {
       res.status(400).json({ error: 'Date is required.' });
+      return;
+    }
+
+    if (status === 'Working Day' && (!rate || Number(rate) <= 0)) {
+      res.status(400).json({ error: 'Rate is required for Working Day.' });
+      return;
+    }
+    if (status === 'Working Day' && (!crewSalary || Number(crewSalary) <= 0)) {
+      res.status(400).json({ error: 'Crew Salary is required for Working Day.' });
       return;
     }
 
@@ -173,6 +183,7 @@ router.post('/', validateTripData, async (req: Request, res: Response) => {
 
     const trip = await Trip.create({
       truck: truck._id,
+      createdBy: req.user?._id || null,
       ...tripData,
     });
 
@@ -188,8 +199,8 @@ router.post('/', validateTripData, async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/trips/:id
-router.put('/:id', validateTripUpdate, async (req: Request, res: Response) => {
+// PUT /api/trips/:id (admin, or owner of unpaid trip)
+router.put('/:id', validateTripUpdate, async (req: AuthRequest, res: Response) => {
   try {
     const { date, status, shipmentNumber, rate, trips, crewSalary, cashAdvance, reimbursements, note } = req.body;
 
@@ -197,6 +208,15 @@ router.put('/:id', validateTripUpdate, async (req: Request, res: Response) => {
     if (!existingTrip) {
       res.status(404).json({ error: 'Trip not found.' });
       return;
+    }
+
+    // Non-admin can only edit their own unpaid trips
+    if (req.user?.role !== 'admin') {
+      const isOwner = existingTrip.createdBy && String(existingTrip.createdBy) === String(req.user?._id);
+      if (!isOwner || existingTrip.paid) {
+        res.status(403).json({ error: 'You can only edit your own unpaid trips.' });
+        return;
+      }
     }
 
     const truck = await Truck.findById(existingTrip.truck);
@@ -232,13 +252,22 @@ router.put('/:id', validateTripUpdate, async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/trips/:id
-router.delete('/:id', async (req: Request, res: Response) => {
+// DELETE /api/trips/:id (admin, or owner of unpaid trip)
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const trip = await Trip.findById(req.params.id);
     if (!trip) {
       res.status(404).json({ error: 'Trip not found.' });
       return;
+    }
+
+    // Non-admin can only delete their own unpaid trips
+    if (req.user?.role !== 'admin') {
+      const isOwner = trip.createdBy && String(trip.createdBy) === String(req.user?._id);
+      if (!isOwner || trip.paid) {
+        res.status(403).json({ error: 'You can only delete your own unpaid trips.' });
+        return;
+      }
     }
 
     const truckId = trip.truck;
@@ -255,8 +284,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/trips/:id/quick-edit
-router.patch('/:id/quick-edit', async (req: Request, res: Response) => {
+// PATCH /api/trips/:id/quick-edit (admin only)
+router.patch('/:id/quick-edit', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { field, value } = req.body;
     const allowedFields = ['rate', 'trips', 'crewSalary', 'cashAdvance', 'reimbursements', 'note'];
@@ -303,8 +332,8 @@ router.patch('/:id/quick-edit', async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/trips/:id/toggle-paid
-router.patch('/:id/toggle-paid', async (req: Request, res: Response) => {
+// PATCH /api/trips/:id/toggle-paid (admin only)
+router.patch('/:id/toggle-paid', requireAdmin, async (req: Request, res: Response) => {
   try {
     const trip = await Trip.findById(req.params.id);
     if (!trip) {

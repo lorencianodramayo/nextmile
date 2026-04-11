@@ -4,6 +4,7 @@ import { Trip } from '../models/Trip.js';
 import { Expense } from '../models/Expense.js';
 import { dayNameShort } from '../utils/calculations.js';
 import { validateTruckData } from '../middleware/validate.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -38,8 +39,8 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-// POST /api/trucks - Create truck
-router.post('/', validateTruckData, async (req: Request, res: Response) => {
+// POST /api/trucks - Create truck (admin only)
+router.post('/', requireAdmin, validateTruckData, async (req: Request, res: Response) => {
   try {
     const { truckName, status, notes, cutoffStart, cutoffEnd, payday, dayOff } = req.body;
 
@@ -73,8 +74,8 @@ router.post('/', validateTruckData, async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/trucks/:id - Update truck
-router.put('/:id', validateTruckData, async (req: Request, res: Response) => {
+// PUT /api/trucks/:id - Update truck (admin only)
+router.put('/:id', requireAdmin, validateTruckData, async (req: Request, res: Response) => {
   try {
     const { truckName, status, notes, cutoffStart, cutoffEnd, payday, dayOff } = req.body;
 
@@ -108,8 +109,8 @@ router.put('/:id', validateTruckData, async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/trucks/:id - Delete truck + cascade
-router.delete('/:id', async (req: Request, res: Response) => {
+// DELETE /api/trucks/:id - Delete truck + cascade (admin only)
+router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const truck = await Truck.findById(req.params.id);
     if (!truck) {

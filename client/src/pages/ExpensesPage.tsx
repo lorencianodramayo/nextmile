@@ -28,9 +28,9 @@ export default function ExpensesPage() {
   const isDark = theme === 'dark';
   const selectStyles = getSelectStyles(isDark);
 
-  useEffect(() => { initApp(); }, []);
-  useEffect(() => { fetchExpenses(); }, [expensesMonth]);
-  useEffect(() => { fetchExpenseCategories(); }, [selectedTruck]);
+  useEffect(() => { initApp(); }, [initApp]);
+  useEffect(() => { fetchExpenses(); }, [fetchExpenses, expensesMonth]);
+  useEffect(() => { fetchExpenseCategories(); }, [fetchExpenseCategories, selectedTruck]);
 
   // Build category options: merge stored + defaults, dedup
   const categoryOptions = useMemo(() => {

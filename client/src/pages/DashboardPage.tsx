@@ -44,7 +44,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     initApp();
-  }, []);
+  }, [initApp]);
 
   const selectedTruckName = truckOptions.find((t) => t._id === selectedTruck)?.truckName;
   const rangeLabels: Record<string, string> = { ALL: 'Selected', CC: "Current Cutoff's", LC: "Last Cutoff's", TM: "This Month's", LM: "Last Month's", MTD: "MTD", YTD: "YTD", '7': "Last 7 Days'", '14': "Last 14 Days'", '30': "Last 30 Days'", CUSTOM: "Custom" };

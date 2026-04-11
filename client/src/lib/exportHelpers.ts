@@ -75,7 +75,7 @@ tbody tr:nth-child(even) td { background-color: #f9fafb; }
   <div class="total-row"><span class="label">TOTAL TRIPS</span><span>${totalTrips.toLocaleString()}</span></div>
   <div class="total-row"><span class="label">TOTAL PAYABLE</span><span>${peso(totalPayable)}</span></div>
 </div>
-<script>window.onload=function(){window.print();}<\/script>
+<script>window.onload=function(){window.print();}</script>
 </body></html>`;
 
   const win = window.open('', '_blank', 'width=900,height=700');
@@ -126,7 +126,7 @@ tbody tr:nth-child(even) td{background-color:#f9fafb}
   <div class="total-row"><span class="label">TOTAL PAYABLE</span><span>${peso(totalPayable)}</span></div>
   <div class="total-row"><span class="label">NET INCOME</span><span>${peso(totalNet)}</span></div>
 </div>
-<script>window.onload=function(){window.print();}<\/script>
+<script>window.onload=function(){window.print();}</script>
 </body></html>`;
 
   const win = window.open('', '_blank', 'width=900,height=700');

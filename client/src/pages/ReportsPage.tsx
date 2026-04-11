@@ -13,8 +13,8 @@ export default function ReportsPage() {
   const { reportRows, reportsMonth, setReportsMonth, fetchReports, initApp, selectedTruck, truckOptions } = useAppStore();
   const [expenseBreakdown, setExpenseBreakdown] = useState<{truckId: string; dateIso: string; dateText: string} | null>(null);
 
-  useEffect(() => { initApp(); }, []);
-  useEffect(() => { fetchReports(); }, [reportsMonth, selectedTruck]);
+  useEffect(() => { initApp(); }, [initApp]);
+  useEffect(() => { fetchReports(); }, [fetchReports, reportsMonth, selectedTruck]);
 
   const selectedTruckName = truckOptions.find((t) => t._id === selectedTruck)?.truckName;
 

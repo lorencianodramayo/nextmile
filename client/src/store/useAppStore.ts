@@ -1,7 +1,17 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
+import axios from 'axios';
 import api from '../api/client';
 import { type RangePreset, getDateRangeForPreset } from '../lib/dateHelpers';
+
+/** Extract a user-friendly error message from an unknown caught value. */
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    return err.response?.data?.error || err.message || fallback;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
 
 export interface TruckOption {
   _id: string;
@@ -245,9 +255,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       await api.patch('/trips/bulk-paid', { ids, paid });
       await get().fetchDashboard();
       toast.success(`${ids.length} trip(s) marked as ${paid ? 'paid' : 'unpaid'}`, { duration: 4000 });
-    } catch (err: any) {
+    } catch (err: unknown) {
       set({ tripRows: originalRows, selectedTripIds: ids });
-      toast.error(err?.response?.data?.error || 'Failed to update paid status');
+      toast.error(getErrorMessage(err, 'Failed to update paid status'));
     }
   },
   bulkDeleteTrips: async (ids) => {
@@ -264,9 +274,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       await api.delete('/trips/bulk-delete', { data: { ids } });
       await get().fetchDashboard();
       toast.success(`${ids.length} trip(s) deleted`, { duration: 4000 });
-    } catch (err: any) {
+    } catch (err: unknown) {
       set({ tripRows: originalRows, selectedTripIds: ids });
-      toast.error(err?.response?.data?.error || 'Failed to delete trips');
+      toast.error(getErrorMessage(err, 'Failed to delete trips'));
     }
   },
 
@@ -335,9 +345,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       // Now fetch dashboard data
       await get().fetchDashboard();
       await get().fetchExpenses();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to init app:', err);
-      const msg = err?.response?.data?.error || err?.message || 'Failed to initialize app';
+      const msg = getErrorMessage(err, 'Failed to initialize app');
       set({ initialized: true, error: msg });
       toast.error(msg);
     }
@@ -379,9 +389,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         endDate: range.end,
         error: null,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch dashboard:', err);
-      const msg = err?.response?.data?.error || err?.message || 'Failed to load dashboard data';
+      const msg = getErrorMessage(err, 'Failed to load dashboard data');
       set({ error: msg });
       toast.error(msg);
     } finally {
@@ -398,9 +408,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const { data } = await api.get('/expenses', { params });
       set({ expenseRows: data.rows || [] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch expenses:', err);
-      toast.error(err?.response?.data?.error || 'Failed to load expenses');
+      toast.error(getErrorMessage(err, 'Failed to load expenses'));
     }
   },
 
@@ -427,9 +437,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           dayOff: t.dayOff,
         })),
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch trucks:', err);
-      toast.error(err?.response?.data?.error || 'Failed to load trucks');
+      toast.error(getErrorMessage(err, 'Failed to load trucks'));
     }
   },
 
@@ -442,9 +452,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const { data } = await api.get('/dashboard/reports', { params });
       set({ reportRows: data.rows || [] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch reports:', err);
-      toast.error(err?.response?.data?.error || 'Failed to load reports');
+      toast.error(getErrorMessage(err, 'Failed to load reports'));
     }
   },
 
@@ -453,8 +463,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       await api.patch(`/trips/${id}/quick-edit`, { field, value });
       await get().fetchDashboard();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to update field');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to update field'));
       throw err;
     }
   },
@@ -466,8 +476,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       toast.success('Trip created successfully', { duration: 4000 });
       await get().fetchDashboard();
       await get().fetchExpenses();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to create trip');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to create trip'));
       throw err;
     }
   },
@@ -477,8 +487,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       toast.success('Trip updated successfully', { duration: 4000 });
       await get().fetchDashboard();
       await get().fetchExpenses();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to update trip');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to update trip'));
       throw err;
     }
   },
@@ -493,10 +503,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       await api.delete(`/trips/${id}`);
       await get().fetchDashboard();
       toast.success('Trip deleted', { duration: 4000 });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Revert on error
       set({ tripRows: originalRows });
-      toast.error(err?.response?.data?.error || 'Failed to delete trip');
+      toast.error(getErrorMessage(err, 'Failed to delete trip'));
     }
   },
   toggleTripPaid: async (id) => {
@@ -532,7 +542,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           },
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Revert on error
       set({
         tripRows: get().tripRows.map(t =>
@@ -541,7 +551,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             : t
         ),
       });
-      toast.error(err?.response?.data?.error || 'Failed to update paid status');
+      toast.error(getErrorMessage(err, 'Failed to update paid status'));
     }
   },
 
@@ -552,8 +562,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       toast.success('Expense saved successfully', { duration: 4000 });
       await get().fetchExpenses();
       await get().fetchDashboard();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to save expense');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to save expense'));
       throw err;
     }
   },
@@ -563,8 +573,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       toast.success('Expense updated successfully', { duration: 4000 });
       await get().fetchExpenses();
       await get().fetchDashboard();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to update expense');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to update expense'));
       throw err;
     }
   },
@@ -580,10 +590,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       await get().fetchExpenses();
       await get().fetchDashboard();
       toast.success('Expense deleted', { duration: 4000 });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Revert on error
       set({ expenseRows: originalRows });
-      toast.error(err?.response?.data?.error || 'Failed to delete expense');
+      toast.error(getErrorMessage(err, 'Failed to delete expense'));
     }
   },
 
@@ -594,8 +604,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       toast.success('Truck saved successfully', { duration: 4000 });
       await get().fetchTrucks();
       await get().fetchDashboard();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to save truck');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to save truck'));
       throw err;
     }
   },
@@ -605,8 +615,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       toast.success('Truck updated successfully', { duration: 4000 });
       await get().fetchTrucks();
       await get().fetchDashboard();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to update truck');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to update truck'));
       throw err;
     }
   },
@@ -634,14 +644,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       await get().fetchTrucks();
       await get().fetchDashboard();
       toast.success('Truck deleted', { duration: 4000 });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Revert on error
       set({
         truckRows: originalTruckRows,
         truckOptions: originalTruckOptions,
         selectedTruck: originalSelectedTruck,
       });
-      toast.error(err?.response?.data?.error || 'Failed to delete truck');
+      toast.error(getErrorMessage(err, 'Failed to delete truck'));
     }
   },
 }));

@@ -54,7 +54,7 @@ export default function TrucksPage() {
     cutoffStart: '1', cutoffEnd: '6', payday: '6', dayOff: '0',
   });
 
-  useEffect(() => { initApp(); fetchTrucks(); }, []);
+  useEffect(() => { initApp(); fetchTrucks(); }, [initApp, fetchTrucks]);
 
   const openAdd = () => {
     setEditRow(null);

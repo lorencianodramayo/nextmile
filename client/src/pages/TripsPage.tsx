@@ -34,7 +34,7 @@ export default function TripsPage() {
     onSearch: () => searchInputRef.current?.focus(),
   });
 
-  useEffect(() => { initApp(); }, []);
+  useEffect(() => { initApp(); }, [initApp]);
 
   const selectedTruckName = truckOptions.find((t) => t._id === selectedTruck)?.truckName;
   const pageTitle = selectedTruckName ? `${selectedTruckName} Trips` : 'Trips';

@@ -33,6 +33,10 @@ export interface TripTableProps {
   emptyState?: ReactNode;
   /** Show truck name column (when All Trucks selected) */
   showTruckColumn?: boolean;
+  /** Per-row filter: can this row be edited? */
+  canEditRow?: (row: TripRow) => boolean;
+  /** Per-row filter: can this row be deleted? */
+  canDeleteRow?: (row: TripRow) => boolean;
 }
 
 // Map header labels to sortable field keys
@@ -416,6 +420,8 @@ export default function TripTable({
   onSort,
   emptyState,
   showTruckColumn = false,
+  canEditRow,
+  canDeleteRow,
 }: TripTableProps) {
   const baseHeaders = showActions ? BASE_HEADERS_WITH_ACTIONS : BASE_HEADERS_NO_ACTIONS;
   const headers = buildHeaders(baseHeaders, showTruckColumn);
@@ -665,7 +671,7 @@ export default function TripTable({
                             <Copy size={14} />
                           </button>
                         )}
-                        {onEdit && (
+                        {onEdit && (!canEditRow || canEditRow(r)) && (
                           <button
                             onClick={() => onEdit(r)}
                             className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-600 transition-all"
@@ -674,7 +680,7 @@ export default function TripTable({
                             <Pencil size={14} />
                           </button>
                         )}
-                        {onDelete && (
+                        {onDelete && (!canDeleteRow || canDeleteRow(r)) && (
                           <button
                             onClick={() => onDelete(r)}
                             className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-500 transition-all"

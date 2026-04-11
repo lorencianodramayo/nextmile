@@ -21,6 +21,7 @@ export default function TripsPage() {
     selectedTripIds, setSelectedTripIds, bulkTogglePaid, bulkDeleteTrips, quickEditTrip,
   } = useAppStore();
   const { isAdmin } = useAuthStore();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const admin = isAdmin();
 
   const [tripModal, setTripModal] = useState(false);
@@ -174,16 +175,12 @@ export default function TripsPage() {
           selectedIds={admin ? selectedTripIds : []}
           onSelectionChange={admin ? setSelectedTripIds : undefined}
           onTogglePaid={admin ? (id) => toggleTripPaid(id) : undefined}
-          onEdit={(r) => {
-            if (!admin && r.paid) return;
-            setEditRow(r); setDuplicateFrom(null); setTripModal(true);
-          }}
-          onDelete={(r) => {
-            if (!admin && r.paid) return;
-            setDeleteModal(r);
-          }}
+          onEdit={(r) => { setEditRow(r); setDuplicateFrom(null); setTripModal(true); }}
+          onDelete={(r) => setDeleteModal(r)}
           onDuplicate={admin ? handleDuplicate : undefined}
           onExpenseClick={(data) => setExpenseBreakdown(data)}
+          canEditRow={admin ? undefined : (r) => !r.paid}
+          canDeleteRow={admin ? undefined : (r) => !r.paid}
           selectedTruck={selectedTruck}
           showTruckColumn={!selectedTruck}
           onQuickEdit={admin ? quickEditTrip : undefined}

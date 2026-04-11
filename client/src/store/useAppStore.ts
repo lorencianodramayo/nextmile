@@ -360,10 +360,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       // Now fetch dashboard data
       await get().fetchDashboard();
-      // Only fetch expenses for admin (employees don't have access)
-      if (isAdmin) {
-        await get().fetchExpenses();
-      }
+      await get().fetchExpenses();
     } catch (err: unknown) {
       console.error('Failed to init app:', err);
       const msg = getErrorMessage(err, 'Failed to initialize app');
@@ -419,13 +416,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   fetchExpenses: async () => {
-    // Skip for non-admin users (they get 403)
-    const storedUser = localStorage.getItem('nm_user');
-    if (storedUser) {
-      const u = JSON.parse(storedUser);
-      if (u.role !== 'admin') return;
-    }
-
     const state = get();
     try {
       const params: Record<string, string> = {};

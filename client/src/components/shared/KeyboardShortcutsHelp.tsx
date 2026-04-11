@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Keyboard, X } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
 
-const shortcuts = [
+const adminShortcuts = [
   { keys: ['/', '⌘K'], description: 'Focus search' },
   { keys: ['N'], description: 'New trip' },
   { keys: ['E'], description: 'New expense' },
@@ -9,12 +10,26 @@ const shortcuts = [
   { keys: ['2'], description: 'Go to Trips' },
   { keys: ['3'], description: 'Go to Expenses' },
   { keys: ['4'], description: 'Go to Reports' },
-  { keys: ['5'], description: 'Go to Trucks' },
+  { keys: ['5'], description: 'Go to Payments' },
+  { keys: ['6'], description: 'Go to Trucks' },
+  { keys: ['7'], description: 'Go to Users' },
+  { keys: ['Esc'], description: 'Close modal / dialog' },
+  { keys: ['?'], description: 'Show this help' },
+];
+
+const employeeShortcuts = [
+  { keys: ['/', '⌘K'], description: 'Focus search' },
+  { keys: ['N'], description: 'New trip' },
+  { keys: ['E'], description: 'New expense' },
+  { keys: ['1'], description: 'Go to Trips' },
+  { keys: ['2'], description: 'Go to Expenses' },
   { keys: ['Esc'], description: 'Close modal / dialog' },
   { keys: ['?'], description: 'Show this help' },
 ];
 
 export default function KeyboardShortcutsHelp() {
+  const { isAdmin } = useAuthStore();
+  const shortcuts = isAdmin() ? adminShortcuts : employeeShortcuts;
   const [open, setOpen] = useState(false);
 
   useEffect(() => {

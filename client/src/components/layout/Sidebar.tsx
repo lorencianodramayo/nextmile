@@ -22,7 +22,7 @@ import { cn } from '../../lib/utils';
 const allNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', adminOnly: true },
   { to: '/trips', icon: Route, label: 'Trips', adminOnly: false },
-  { to: '/expenses', icon: HandCoins, label: 'Expenses', adminOnly: true },
+  { to: '/expenses', icon: HandCoins, label: 'Expenses', adminOnly: false },
   { to: '/reports', icon: BarChart3, label: 'Reports', adminOnly: true },
   { to: '/payments', icon: CreditCard, label: 'Payments', adminOnly: true },
   { to: '/trucks', icon: Truck, label: 'Trucks', adminOnly: true },

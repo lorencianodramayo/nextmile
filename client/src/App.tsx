@@ -94,11 +94,9 @@ export default function App() {
             </Suspense>
           } />
           <Route path="/expenses" element={
-            <RequireAdmin>
-              <Suspense fallback={<PageSkeleton />}>
-                <ExpensesPage />
-              </Suspense>
-            </RequireAdmin>
+            <Suspense fallback={<PageSkeleton />}>
+              <ExpensesPage />
+            </Suspense>
           } />
           <Route path="/reports" element={
             <RequireAdmin>

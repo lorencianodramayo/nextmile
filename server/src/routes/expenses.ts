@@ -3,7 +3,7 @@ import { Expense } from '../models/Expense.js';
 import { Truck } from '../models/Truck.js';
 import { syncTripsForDate } from '../services/tripService.js';
 import { validateExpenseData, validateExpenseUpdate } from '../middleware/validate.js';
-import { requireAdmin } from '../middleware/auth.js';
+import { requireAdmin, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -61,13 +61,21 @@ router.get('/by-date', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/expenses?truck=&month= (admin only)
-router.get('/', requireAdmin, async (req: Request, res: Response) => {
+// GET /api/expenses?truck=&month=
+router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const { truck, month } = req.query;
     const filter: any = {};
 
-    if (truck) {
+    // Employees can only see expenses for their assigned truck
+    if (req.user?.role === 'employee') {
+      if (req.user.truck) {
+        filter.truck = req.user.truck;
+      } else {
+        res.json({ rows: [] });
+        return;
+      }
+    } else if (truck) {
       filter.truck = truck;
     }
 
@@ -107,10 +115,18 @@ router.get('/', requireAdmin, async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/expenses (admin only)
-router.post('/', requireAdmin, validateExpenseData, async (req: Request, res: Response) => {
+// POST /api/expenses (admin or employee for their truck)
+router.post('/', validateExpenseData, async (req: AuthRequest, res: Response) => {
   try {
     const { truckId, date, category, amount, description } = req.body;
+
+    // Employees can only add expenses for their assigned truck
+    if (req.user?.role === 'employee') {
+      if (!req.user.truck || String(req.user.truck) !== truckId) {
+        res.status(403).json({ error: 'You can only add expenses for your assigned truck.' });
+        return;
+      }
+    }
 
     if (!truckId) {
       res.status(400).json({ error: 'Truck is required.' });
@@ -155,8 +171,8 @@ router.post('/', requireAdmin, validateExpenseData, async (req: Request, res: Re
   }
 });
 
-// PUT /api/expenses/:id (admin only)
-router.put('/:id', requireAdmin, validateExpenseUpdate, async (req: Request, res: Response) => {
+// PUT /api/expenses/:id (admin, or employee for their truck)
+router.put('/:id', validateExpenseUpdate, async (req: AuthRequest, res: Response) => {
   try {
     const { date, category, amount, description } = req.body;
 
@@ -164,6 +180,14 @@ router.put('/:id', requireAdmin, validateExpenseUpdate, async (req: Request, res
     if (!existing) {
       res.status(404).json({ error: 'Expense not found.' });
       return;
+    }
+
+    // Employee can only edit expenses for their assigned truck
+    if (req.user?.role === 'employee') {
+      if (!req.user.truck || String(req.user.truck) !== String(existing.truck)) {
+        res.status(403).json({ error: 'You can only edit expenses for your assigned truck.' });
+        return;
+      }
     }
 
     const parsedDate = date ? new Date(date) : existing.date;
@@ -210,13 +234,21 @@ router.patch('/:id/toggle-reimbursed', requireAdmin, async (req: Request, res: R
   }
 });
 
-// DELETE /api/expenses/:id (admin only)
-router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
+// DELETE /api/expenses/:id (admin, or employee for their truck)
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const expense = await Expense.findById(req.params.id);
     if (!expense) {
       res.status(404).json({ error: 'Expense not found.' });
       return;
+    }
+
+    // Employee can only delete expenses for their assigned truck
+    if (req.user?.role === 'employee') {
+      if (!req.user.truck || String(req.user.truck) !== String(expense.truck)) {
+        res.status(403).json({ error: 'You can only delete expenses for your assigned truck.' });
+        return;
+      }
     }
 
     const truckId = expense.truck;

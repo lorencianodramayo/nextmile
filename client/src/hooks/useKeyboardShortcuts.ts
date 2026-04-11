@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/useAuthStore';
 
 interface ShortcutHandlers {
   onNewTrip?: () => void;
@@ -9,6 +10,8 @@ interface ShortcutHandlers {
 
 export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
   const navigate = useNavigate();
+  const { isAdmin } = useAuthStore();
+  const admin = isAdmin();
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -48,14 +51,21 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
         e.preventDefault();
         handlers.onNewExpense?.();
       }
-      // Number keys 1-5 for navigation
-      else if (e.key >= '1' && e.key <= '5') {
+      // Number keys for navigation (role-aware)
+      else if (e.key >= '1' && e.key <= '7') {
         e.preventDefault();
-        const routes = ['/', '/trips', '/expenses', '/reports', '/trucks'];
-        navigate(routes[parseInt(e.key) - 1]);
+        if (admin) {
+          const adminRoutes = ['/', '/trips', '/expenses', '/reports', '/payments', '/trucks', '/users'];
+          const idx = parseInt(e.key) - 1;
+          if (idx < adminRoutes.length) navigate(adminRoutes[idx]);
+        } else {
+          const empRoutes = ['/trips', '/expenses'];
+          const idx = parseInt(e.key) - 1;
+          if (idx < empRoutes.length) navigate(empRoutes[idx]);
+        }
       }
     },
-    [navigate, handlers]
+    [navigate, handlers, admin]
   );
 
   useEffect(() => {

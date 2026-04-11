@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useAppStore, type ExpenseRow } from '../store/useAppStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import FilterBar from '../components/shared/FilterBar';
 import Modal from '../components/shared/Modal';
@@ -18,6 +19,8 @@ const DEFAULT_CATEGORIES = ['Fuel', 'Maintenance', 'Tires', 'Toll', 'Parking', '
 
 export default function ExpensesPage() {
   const { expenseRows, selectedTruck, truckOptions, expensesMonth, setExpensesMonth, fetchExpenses, initApp, addExpense, updateExpense, deleteExpense, toggleExpenseReimbursed, expenseCategories, fetchExpenseCategories, theme } = useAppStore();
+  const { isAdmin } = useAuthStore();
+  const admin = isAdmin();
   const [expenseModal, setExpenseModal] = useState(false);
   const [editRow, setEditRow] = useState<ExpenseRow | null>(null);
   const [deleteModal, setDeleteModal] = useState<ExpenseRow | null>(null);
@@ -112,7 +115,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      <FilterBar showRange={false} showTruck={false} showMonth monthValue={expensesMonth} onMonthChange={setExpensesMonth}
+      <FilterBar showRange={false} showTruck={false} showMonth={admin} monthValue={expensesMonth} onMonthChange={setExpensesMonth}
         actions={<button onClick={openAdd} className="min-h-[44px] px-4 rounded-[14px] bg-gradient-to-br from-blue-600 to-blue-700 text-white text-sm font-semibold shadow-[0_10px_20px_rgba(37,99,235,0.18)] hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-1.5"><Plus size={18} /> Add Expense</button>} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-3">
@@ -127,14 +130,14 @@ export default function ExpensesPage() {
             <table className="w-full border-separate border-spacing-0">
               <thead>
                 <tr>
-                  {['Date', 'Category', 'Amount', 'Description', 'Reimbursed', 'Actions'].map((h) => (
+                  {(admin ? ['Date', 'Category', 'Amount', 'Description', 'Reimbursed', 'Actions'] : ['Date', 'Category', 'Amount', 'Description', 'Actions']).map((h) => (
                     <th key={h} className="sticky top-0 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 px-3 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.length === 0 ? (
-                  <tr><td colSpan={6}>
+                  <tr><td colSpan={admin ? 6 : 5}>
                     <EmptyState
                       icon={Coins}
                       title="No expenses found"
@@ -157,23 +160,25 @@ export default function ExpensesPage() {
                     </td>
                     <td className={`text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 font-semibold ${r.reimbursed ? 'text-green-500 line-through' : 'text-red-500'}`}>{peso(r.amount)}</td>
                     <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">{r.description}</td>
-                    <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                      {r.category.toUpperCase() === 'PARKING' ? (
-                        <button
-                          onClick={() => toggleExpenseReimbursed(r._id)}
-                          className={`w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border transition-all ${
-                            r.reimbursed
-                              ? 'bg-green-500/10 border-green-500/25 text-green-500 hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-500'
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-green-500/10 hover:border-green-500/25 hover:text-green-500'
-                          }`}
-                          title={r.reimbursed ? 'Mark as not reimbursed' : 'Mark as reimbursed by client'}
-                        >
-                          <Check size={14} />
-                        </button>
-                      ) : (
-                        <span className="text-slate-300 dark:text-slate-600">—</span>
-                      )}
-                    </td>
+                    {admin && (
+                      <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                        {r.category.toUpperCase() === 'PARKING' ? (
+                          <button
+                            onClick={() => toggleExpenseReimbursed(r._id)}
+                            className={`w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border transition-all ${
+                              r.reimbursed
+                                ? 'bg-green-500/10 border-green-500/25 text-green-500 hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-500'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-green-500/10 hover:border-green-500/25 hover:text-green-500'
+                            }`}
+                            title={r.reimbursed ? 'Mark as not reimbursed' : 'Mark as reimbursed by client'}
+                          >
+                            <Check size={14} />
+                          </button>
+                        ) : (
+                          <span className="text-slate-300 dark:text-slate-600">—</span>
+                        )}
+                      </td>
+                    )}
                     <td className="text-center text-xs px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => openEdit(r)} className="w-[34px] h-[34px] rounded-xl inline-flex items-center justify-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-600 transition-all"><Pencil size={14} /></button>

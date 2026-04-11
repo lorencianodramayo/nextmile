@@ -35,7 +35,7 @@ export default function Sidebar() {
         'shadow-[4px_0_20px_rgba(15,23,42,0.05)] dark:shadow-[4px_0_20px_rgba(0,0,0,0.2)]',
         // Desktop: always visible
         'hidden lg:flex',
-        sidebarCollapsed ? 'lg:w-[72px] lg:px-2.5' : 'lg:w-[260px]',
+        sidebarCollapsed ? 'lg:w-[56px] lg:px-1.5' : 'lg:w-[260px]',
         // Mobile: slide-out drawer when open
         isOpen && '!flex w-[280px]'
       )}
@@ -85,7 +85,7 @@ export default function Sidebar() {
             className={({ isActive }) =>
               cn(
                 'relative flex items-center gap-3 rounded-xl font-medium text-sm transition-all duration-150 group',
-                sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2.5',
+                sidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5',
                 isActive
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
                   : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200'
@@ -109,7 +109,7 @@ export default function Sidebar() {
           onClick={toggleTheme}
           className={cn(
             'w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl shadow-sm flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors mb-3',
-            sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2.5'
+            sidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5'
           )}
         >
           {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}

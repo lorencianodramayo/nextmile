@@ -342,14 +342,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       const storedUser = localStorage.getItem('nm_user');
       const isAdmin = storedUser ? JSON.parse(storedUser).role === 'admin' : true;
 
-      // For employees with assigned truck, force-select it
+      // For employees with assigned truck, force-select it and show all trips
       if (!isAdmin && storedUser) {
         const userObj = JSON.parse(storedUser);
         const assignedTruck = typeof userObj.truck === 'object' && userObj.truck
           ? userObj.truck._id
           : userObj.truck;
         if (assignedTruck && truckOptions.find(t => t._id === assignedTruck)) {
-          set({ selectedTruck: assignedTruck });
+          set({ selectedTruck: assignedTruck, rangePreset: 'ALL' as RangePreset, startDate: '', endDate: '' });
         }
       } else if (!get().selectedTruck && truckOptions.length > 0) {
         // Admin: auto-select first truck if none selected

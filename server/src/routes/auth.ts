@@ -69,6 +69,66 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response) => {
   }
 });
 
+// PUT /api/auth/profile - update own display name
+router.put('/profile', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const { displayName } = req.body;
+    if (!displayName?.trim()) {
+      res.status(400).json({ error: 'Display name is required' });
+      return;
+    }
+
+    await User.findByIdAndUpdate(req.user!._id, { displayName: displayName.trim() });
+    const updated = await User.findById(req.user!._id).select('-password');
+
+    res.json({
+      user: {
+        _id: updated!._id,
+        username: updated!.username,
+        displayName: updated!.displayName,
+        role: updated!.role,
+        truck: updated!.truck,
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/auth/password - change own password
+router.put('/password', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: 'Current and new passwords are required' });
+      return;
+    }
+    if (newPassword.length < 4) {
+      res.status(400).json({ error: 'New password must be at least 4 characters' });
+      return;
+    }
+
+    const user = await User.findById(req.user!._id);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      res.status(401).json({ error: 'Current password is incorrect' });
+      return;
+    }
+
+    user.password = newPassword; // will be hashed by pre-save hook
+    await user.save();
+
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Seed default admin if no users exist
 router.post('/seed-admin', async (_req: AuthRequest, res: Response) => {
   try {

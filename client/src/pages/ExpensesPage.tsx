@@ -115,7 +115,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      <FilterBar showRange={false} showTruck={false} showMonth={admin} monthValue={expensesMonth} onMonthChange={setExpensesMonth}
+      <FilterBar showRange={false} showTruck={false} showMonth monthValue={expensesMonth} onMonthChange={setExpensesMonth}
         actions={<button onClick={openAdd} className="min-h-[44px] px-4 rounded-[14px] bg-gradient-to-br from-blue-600 to-blue-700 text-white text-sm font-semibold shadow-[0_10px_20px_rgba(37,99,235,0.18)] hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-1.5"><Plus size={18} /> Add Expense</button>} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-3">
@@ -289,6 +289,21 @@ export default function ExpensesPage() {
           <div className="glass-card rounded-[22px] border border-slate-200/90 dark:border-slate-700/90 shadow-sm p-5 flex flex-col justify-center min-h-[110px]">
             <div className="text-[0.72rem] text-slate-500 uppercase tracking-wider font-semibold">Total Expenses</div>
             <div className="text-[1.8rem] font-extrabold tracking-tight leading-none mt-1.5">{peso(breakdown.total)}</div>
+          </div>
+
+          <div className="glass-card rounded-[22px] border border-slate-200/90 dark:border-slate-700/90 shadow-sm p-4">
+            <h2 className="text-base font-bold tracking-tight mb-1">Categories</h2>
+            <p className="text-sm text-slate-500 mb-3">Available expense categories</p>
+            <div className="flex flex-wrap gap-1.5">
+              {categoryOptions.map((c) => (
+                <span key={c.value} className="inline-block px-2.5 py-1 rounded-full text-[0.72rem] font-bold bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+                  {c.label}
+                </span>
+              ))}
+            </div>
+            <p className="text-[0.65rem] text-slate-400 mt-3">
+              💡 To add a new category, type it in the Category field when adding an expense. It will be saved automatically.
+            </p>
           </div>
         </div>
       </div>

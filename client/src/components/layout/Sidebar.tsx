@@ -16,6 +16,7 @@ import {
   Users,
   CreditCard,
   LogOut,
+  Settings,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -27,6 +28,7 @@ const allNavItems = [
   { to: '/payments', icon: CreditCard, label: 'Payments', adminOnly: true },
   { to: '/trucks', icon: Truck, label: 'Trucks', adminOnly: true },
   { to: '/users', icon: Users, label: 'Users', adminOnly: true },
+  { to: '/settings', icon: Settings, label: 'Settings', adminOnly: false },
 ];
 
 export default function Sidebar() {
@@ -152,7 +154,7 @@ export default function Sidebar() {
                   'inline-block w-1.5 h-1.5 rounded-full mr-1.5 shadow-sm',
                   admin ? 'bg-purple-500' : 'bg-green-500'
                 )} />
-                {admin ? 'Admin' : 'Employee'}
+                {admin ? 'Admin' : 'Driver'}
               </div>
             </div>
             <button

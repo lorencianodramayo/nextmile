@@ -126,7 +126,7 @@ export default function UsersPage() {
 
   const roleOptions = [
     { value: 'admin', label: '🛡️ Admin' },
-    { value: 'employee', label: '👤 Employee' },
+    { value: 'employee', label: '🚛 Driver' },
   ];
 
   const truckSelectOptions = [

@@ -14,6 +14,7 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const TrucksPage = lazy(() => import('./pages/TrucksPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const PaymentsPage = lazy(() => import('./pages/PaymentsPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 /** Redirect to /login if not authenticated */
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -125,6 +126,11 @@ export default function App() {
                 <PaymentsPage />
               </Suspense>
             </RequireAdmin>
+          } />
+          <Route path="/settings" element={
+            <Suspense fallback={<PageSkeleton />}>
+              <SettingsPage />
+            </Suspense>
           } />
         </Route>
 
